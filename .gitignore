@@ -1,3 +1,6 @@
+
+build/**/*
+thhird_party/tensorflow/*.so*
 # Prerequisites
 *.d
 
