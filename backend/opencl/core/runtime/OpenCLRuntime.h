@@ -1,5 +1,5 @@
-#ifndef OpenCLRuntime_H
-#define OpenCLRuntime_H
+#ifndef OPENCLRUNTIME_H
+#define OPENCLRUNTIME_H
 #include <string>
 #include <stdio.h>
 #include <CL/opencl.h>
@@ -16,15 +16,15 @@ namespace SNN
         OpenCLRuntime(const OpenCLRuntime &) = delete;
         OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
         cl_int err;
+        cl_context cxGPUContext;
+        cl_program program;
+        cl_command_queue commandQueue[NQUEUES];
 
     private:
         cl_platform_id platform;
         cl_device_id *device;
-        cl_context cxGPUContext;
         cl_uint NumDevices;
-        cl_command_queue commandQueue[NQUEUES];
         cl_event event = NULL;
-        cl_program program;
     };
 }
 #endif // OpenCLRuntime_H__

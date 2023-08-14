@@ -7,6 +7,8 @@ void print(int n)
     }
     printf("\n");
 }
+
+
 static inline int argmax(std::vector<float> *input)
 {
     std::vector<float>::iterator iter = input->begin();

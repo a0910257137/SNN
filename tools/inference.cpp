@@ -19,9 +19,13 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-
     string path = "/aidata/anders/data_collection/okay/WF/archives/test/FP32.tflite";
-    SNN::Interpreter interpreter(path, true);
+    SNN::Interpreter interpreter(path);
+    interpreter.EnableOpenCL();
+    interpreter.TfliteGraphToSNNGraph();
+
+    return 1;
+    // interpreter.GetInferGraph();
     // unique_ptr<tflite::FlatBufferModel> model = tflite::FlatBufferModel::BuildFromFile(path.c_str());
     // if (!model)
     //     cerr << "Failed to mmap tflite model" << endl;
@@ -112,5 +116,5 @@ int main(int argc, char **argv)
     // }
     // }
     // interpreter->Invoke();
-    return 1;
+    // return 1;
 }

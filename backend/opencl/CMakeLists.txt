@@ -1,13 +1,11 @@
 
 file(GLOB_RECURSE OpenCL_SRC 
-                  ${CMAKE_CURRENT_LIST_DIR}/core/OpenCL*.cpp
-                  ${CMAKE_CURRENT_LIST_DIR}/core/runtime/OpenCL*.cpp
-                  ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp)
-set(OPENCL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/OpenCL")
+                ${CMAKE_CURRENT_LIST_DIR}/execution/image/*.cpp                  
+                ${CMAKE_CURRENT_LIST_DIR}/core/OpenCL*.cpp
+                ${CMAKE_CURRENT_LIST_DIR}/core/runtime/OpenCL*.cpp  
+                ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp)
 set(OPENCL_LIB_DIR "${CMAKE_SOURCE_DIR}/third_party/OpenCL")
 set(OPENCL_BACKEND_DIR "${CMAKE_SOURCE_DIR}/backend")
-# message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
-
 add_definitions(-DCL_TARGET_OPENCL_VERSION=300)
 # by using cuda toolkit
 # find_package(CUDA 11.0 REQUIRED)
@@ -27,8 +25,9 @@ add_definitions(-DCL_TARGET_OPENCL_VERSION=300)
 # )
 # link_directories(${opencl_lib64})
 # find_package(OpenCL REQUIRED)
-message(STATUS "Get opencl library from local third part" ${OPENCL_INCLUDE_DIR})
 # message(${opencl_lib64})
+# message(STATUS ${OpenCL_SRC})
+message(STATUS "Get opencl library from local third part" ${OPENCL_INCLUDE_DIR})
 add_library(OCL_LIBS SHARED ${OpenCL_SRC})
 target_link_libraries(OCL_LIBS
     PRIVATE 

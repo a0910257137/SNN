@@ -64,26 +64,7 @@ extern "C"
     } SNNStatus;
 
     // Types supported by tensor
-    typedef enum
-    {
-        kSNNNoType = 0,
-        kSNNFloat32 = 1,
-        kSNNInt32 = 2,
-        kSNNUInt8 = 3,
-        kSNNInt64 = 4,
-        kSNNString = 5,
-        kSNNBool = 6,
-        kSNNInt16 = 7,
-        kSNNComplex64 = 8,
-        kSNNInt8 = 9,
-        kSNNFloat16 = 10,
-        kSNNFloat64 = 11,
-        kSNNComplex128 = 12,
-        kSNNUInt64 = 13,
-        kSNNResource = 14,
-        kSNNVariant = 15,
-        kSNNUInt32 = 16,
-    } SNNType;
+
 #ifdef __cplusplus
 } // extern C
 #endif

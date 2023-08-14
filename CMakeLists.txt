@@ -20,31 +20,20 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   "${CMAKE_CURRENT_LIST_DIR}/cmake"
 )
-set(TENSORFLOW-LITE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/tensorflow-lite")
-set(TENSORFLOW-LITE_LIB_DIR "${CMAKE_SOURCE_DIR}/third_party/tensorflow-lite")
-# set(TENSORFLOW_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/tensorflow/include")
-# set(TENSORFLOW_LIB_DIR "${CMAKE_SOURCE_DIR}/third_party/tensorflow")
 
 set(SNN_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include/SNN")
 set(THIRD_PARTY_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include/third_party")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
-
 file(GLOB SRC_LIST
             "${PROJECT_SOURCE_DIR}/tools/inference.cpp"
 ) 
-# set(TENSORFLOW_SOURCE_DIR "/home2/anders/proj_c/side_proj/tensorflow")
-# add_subdirectory(
-#   "${TENSORFLOW_SOURCE_DIR}/tensorflow/lite"
-#   "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-lite"
-#   EXCLUDE_FROM_ALL
-# )
 # backend options
 option(SNN_OPENCL "Enable OpenCL" OFF)
 message(STATUS "\tOpenCL: ${SNN_OPENCL}")
 # OpenCL
 IF(SNN_OPENCL)
-  # find_package(OpenCL REQUIRED)
+  set(OPENCL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/OpenCL")
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/backend/opencl)
 ENDIF()
 find_package(Threads REQUIRED)
@@ -54,13 +43,12 @@ link_directories(
                 ${SNN_INCLUDE_DIR})
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/misc)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/core)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/backend)
 add_executable(infer.exe ${SRC_LIST})
-
-# message(${OPENCL_INCLUDE_DIRS})
 target_include_directories(infer.exe  
                           PRIVATE 
-                            ${OPENCL_INCLUDE_DIR}
                             ${SNN_INCLUDE_DIR}
+                            ${OPENCL_INCLUDE_DIR}
                           PUBLIC  
                             ${CMAKE_SOURCE_DIR})
 
