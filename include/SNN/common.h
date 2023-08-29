@@ -69,6 +69,7 @@ typedef struct SNNNode
 {
     // Inputs and Outputs to this node expressed as indices into the simulator's tensors.
     IntArray *inputs, *outputs;
+    int input_shape[4], output_shape[4];
     void *user_data;
     bool status;
     Tensor *tensor;

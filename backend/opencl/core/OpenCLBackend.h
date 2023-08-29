@@ -19,15 +19,17 @@ namespace SNN
     class OpenCLBackend
     {
     public:
-        OpenCLBackend(bool enable_fp16);
+        OpenCLBackend(bool permitFloat16);
         ~OpenCLBackend();
         OpenCLBackend(const OpenCLBackend &) = delete;
         OpenCLBackend &operator=(const OpenCLBackend &) = delete;
-        void ArrayToOpenCL(Tensor &inputs, bool half_precision);
+        OpenCLRuntime *CLRuntime() const { return _mCLRuntime; };
+
+    protected:
+        OpenCLRuntime *_mCLRuntime = nullptr;
 
     private:
-        OpenCLRuntime *mCLRuntime;
-        bool enable_fp16;
+        bool permitFloat16;
     };
 }
 #endif // OPENCLBACKEND_H

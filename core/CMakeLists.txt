@@ -7,13 +7,16 @@ add_subdirectory(
   "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-lite"
   EXCLUDE_FROM_ALL
 )
-add_library(CORE_LIBS SHARED Interpreter.cpp Interpreter.h)
+add_library(CORE_LIBS SHARED 
+                Interpreter.cpp
+                Pipeline.cpp
+                ConvolutionCommon.cpp)
 target_link_libraries(CORE_LIBS
       PRIVATE 
           tensorflow-lite
           UTIL_LIBS
           OCL_LIBS
-          BackendFactory_LIBS)
+          NodeFactory_LIBS)
 # message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
 # message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
 # message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")

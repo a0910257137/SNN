@@ -7,7 +7,7 @@
 #include "include/SNN/common.h"
 #include "include/SNN/api_types.h"
 #include "backend/opencl/core/OpenCLBackend.h"
-#include "backend/BackendFactory.h"
+#include "backend/NodeFactory.h"
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/op_resolver.h"
 #include "tensorflow/lite/kernels/register.h"
@@ -32,15 +32,14 @@ namespace SNN
         Interpreter(const Interpreter &) = delete;
         Interpreter &operator=(const Interpreter &) = delete;
         void GetInferGraph();
-        void EnableOpenCL();
-        vector<SNNNode> TfliteGraphToSNNGraph();
-        void IdentifyOperation(Tensor *snn_params, const TfLiteNode &tflite_params, tflite::BuiltinOperator tflite_op, int *kernel_dims);
+        vector<SNNNode> mGraphToSNNGraph();
+        void IdentifyOperation(Tensor *snn_params, const TfLiteNode &tflite_params, tflite::BuiltinOperator tflite_op);
 
     private:
         int threads;
         unique_ptr<tflite::FlatBufferModel> model;
         unique_ptr<tflite::Interpreter> tflite_interpreter;
-        BackendFactory *backendfactory = nullptr;
+        NodeFactory *nodefactory = nullptr;
         const void *mBackend = nullptr;
     };
 

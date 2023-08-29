@@ -14,7 +14,7 @@ namespace SNN
 
     private:
         CPURuntime *mCPURuntime = nullptr;
-        bool enable_fp16;
+        bool permitFloat16;
     };
 }
 #endif // CPUBACKEND_H

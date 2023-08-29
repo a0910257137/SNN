@@ -3,4 +3,16 @@
 #define CL_TARGET_OPENCL_VERSION 300
 #define GPU_PROFILING 1
 #define MAX_GPU_COUNT 1
+
+enum OpenCLBufferFormat
+{
+    CONV2D_FILTER = 0,
+    NHWC_BUFFER = 1,
+    ARGUMENT = 2,
+    DW_CONV2D_FILTER = 3,
+    NCHW_BUFFER = 4,
+    NHWC4_BUFFER = 5,
+    CONV2D1x1_OPT_FILTER = 6,
+};
+
 #endif // OPENCLSETTING_H

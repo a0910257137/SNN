@@ -196,9 +196,8 @@ extern "C" void shrPrintArray(float *pfData, int iSize);
 //! Find the path for a filename
 //! @return the path if succeeded, otherwise 0
 //! @param filename        name of the file
-//! @param executablePath  optional absolute path of the executable
 ////////////////////////////////////////////////////////////////////////////
-extern "C" char *shrFindFilePath(const char *filename, const char *executablePath);
+extern "C" char *shrFindFilePath(const char *filename);
 
 ////////////////////////////////////////////////////////////////////////////
 //! Read file \filename containing single precision floating point data

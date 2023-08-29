@@ -62,7 +62,7 @@ typedef struct
     Padding padding;
     int stride_width;
     int stride_height;
-    int kernel_dims[4];
+    int kernel_dims[4]; // MHWI
     int bias_dims[1];
     float *weights;
     float *bias;

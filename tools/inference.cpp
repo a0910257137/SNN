@@ -9,6 +9,7 @@
 #include <vector>
 #include "macro.h"
 #include "core/Interpreter.h"
+#include "core/Pipeline.h"
 using namespace std;
 // auto tf_tensor_to_vector(tensorflow::Tensor tensor, int32_t tensorSize)
 // {
@@ -20,10 +21,10 @@ using namespace std;
 int main(int argc, char **argv)
 {
     string path = "/aidata/anders/data_collection/okay/WF/archives/test/FP32.tflite";
-    SNN::Interpreter interpreter(path);
-    interpreter.EnableOpenCL();
-    interpreter.TfliteGraphToSNNGraph();
-
+    SNN::Pipeline pipeline(path, OpenCL);
+    bool status;
+    status = pipeline.GetSNNGraph();
+    status = pipeline.BuildSNNGraph();
     return 1;
     // interpreter.GetInferGraph();
     // unique_ptr<tflite::FlatBufferModel> model = tflite::FlatBufferModel::BuildFromFile(path.c_str());
@@ -43,15 +44,12 @@ int main(int argc, char **argv)
     // cv::resize(image, resized_image, cv::Size(640, 640), 0, 0, CV_INTER_LINEAR);
     // const int kInputBytes = sizeof(uchar) * 640 * 640 * 3;
     // float *input_img = interpreter->typed_tensor<float>(0);
-
     // std::memcpy((uchar *)input_img, resized_image.data, kInputBytes);
     // vector<int> execution_plan = interpreter->execution_plan();
     // int node_index;
-
     // int i, j;
     // for (i = 0; i < execution_plan.size(); ++i)
     // {
-
     //     if (i > 0)
     //     {
     //         continue;
