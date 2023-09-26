@@ -1,61 +1,58 @@
 
 #include "NodeFactory.h"
+#include "include/SNN/common.h"
 
 namespace SNN
 {
-    NodeFactory::NodeFactory(bool enable_fp16)
+    NodeFactory::NodeFactory(BackendConfig &cfg)
     {
+        if (cfg.precisionType == BackendConfig::Precision_FP32)
+            this->permitFloat16 = true;
 
-        this->permitFloat16 = enable_fp16;
-        this->_mBackend = (void *)new CPUBackend(this->permitFloat16);
+        if (cfg.backendType == BackendConfig::OpenCL)
+        {
+            printf("INFO: Enable OpenCL backend\n");
+            this->_mBackend = (OpenCLBackend *)new OpenCLBackend(this->permitFloat16);
+        }
+        else
+        {
+            printf("INFO: Enable CPU backend\n");
+            this->_mBackend = (void *)new CPUBackend(this->permitFloat16);
+        }
     }
     NodeFactory::~NodeFactory()
     {
-    }
-    void NodeFactory::RegistOpenCLBackend()
-    {
-        delete (CPUBackend *)this->_mBackend;
-        this->_mBackend = (OpenCLBackend *)new OpenCLBackend(this->permitFloat16);
+        delete this->_mBackend;
     }
 
-    bool NodeFactory::BuildOperation(Tensor *inputs, int *input_shape, int *output_shape)
+    bool NodeFactory::BuildOperation(std::shared_ptr<Tensor> tensor)
     {
-        if (inputs->op_type == DepthwiseConv)
+        if (tensor->GetOpType() == DepthwiseConv)
         {
-            if (this->_mBackend != nullptr)
-            {
-                DepthwiseConvExecution op((OpenCLBackend *)this->_mBackend);
-                op.onInit(inputs);
-                op.onResize(inputs, input_shape, output_shape);
-                exit(1);
-            }
+            DepthwiseConvExecution op(tensor, (OpenCLBackend *)this->_mBackend);
+            op.onResize(tensor);
+            exit(1);
         }
-        else if (inputs->op_type == Conv)
-        {
-        }
-        else if (inputs->op_type == Concat)
-        {
-        }
-        else if (inputs->op_type == Relu)
-        {
-        }
-        else if (inputs->op_type == AveragePooling2D)
-        {
-        }
-        else if (inputs->op_type == MaxPooling2D)
-        {
-        }
+        //     // if (kernelData->op_type == DepthwiseConv)
+        //     // {
+        //     // }
+        //     // else if (kernelData->op_type == Conv)
+        //     // {
+        //     // }
+        //     // else if (kernelData->op_type == Concat)
+        //     // {
+        //     // }
+        //     // else if (kernelData->op_type == Relu)
+        //     // {
+        //     // }
+        //     // else if (kernelData->op_type == AveragePooling2D)
+        //     // {
+        //     // }
+        //     // else if (kernelData->op_type == MaxPooling2D)
+        //     // {
+        //     // }
 
         return true;
     }
 
-    // bool NodeFactory::AllocateMemory(Tensor *inputs)
-    // {
-    //     // apply onResize tensor
-    //     if (inputs->op_type == DepthwiseConv)
-    //     {
-    //         if (this->_mBackend != nullptr)
-    //             DepthwiseConvExecution op(inputs, (OpenCLBackend *)this->_mBackend);
-    //     }
-    // }
 }

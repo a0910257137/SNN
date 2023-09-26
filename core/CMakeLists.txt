@@ -8,6 +8,7 @@ add_subdirectory(
   EXCLUDE_FROM_ALL
 )
 add_library(CORE_LIBS SHARED 
+                Tensor.cpp
                 Interpreter.cpp
                 Pipeline.cpp
                 ConvolutionCommon.cpp)

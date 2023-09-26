@@ -20,6 +20,7 @@ __constant sampler_t SAMPLER =
   if (input1 >= global_size_dim0 || input2 >= global_size_dim1) {              \
     return;                                                                    \
   }
+
 __kernel
 #if SET_ATTRIBUTE
     __attribute__((work_group_size_hint(16, 16, 1)))
@@ -154,7 +155,6 @@ __kernel
         __private const int inChannelBlocks, __private const int2 outputShape,
         __private const int2 filterShape, __private const int2 paddingShape,
         __private const int2 dilationShape, __private const int2 strideShape) {
-
   const int outChannelWidthIdx = get_global_id(0);
   const int outHeightIdx = get_global_id(1);
   DEAL_NON_UNIFORM_DIM2(outChannelWidthIdx, outHeightIdx);
@@ -162,9 +162,7 @@ __kernel
   int ow4 = (outputShape.y + 3) / 4;
   const int outChannelBlockIdx = outChannelWidthIdx / ow4;
   const int outWidthBlockidx = outChannelWidthIdx % ow4;
-
   const int inChannelBlockIdx = outChannelBlockIdx;
-
 #ifndef NO_BIAS
   FLOAT4 outValue0 = RI_F(bias, SAMPLER, (int2)(outChannelBlockIdx, 0));
 #else
@@ -173,7 +171,6 @@ __kernel
   FLOAT4 outValue1 = outValue0;
   FLOAT4 outValue2 = outValue0;
   FLOAT4 outValue3 = outValue0;
-
   const int inWidthOffset0 =
       mad24(outWidthBlockidx, strideShape.y << 2, -paddingShape.y);
   const int inWidthOffset1 = inWidthOffset0 + strideShape.y;
@@ -208,7 +205,6 @@ __kernel
       outValue3 = mad(inValue3, weights, outValue3);
     }
   }
-
 #ifdef RELU
   outValue0 = fmax(outValue0, (FLOAT4)0);
   outValue1 = fmax(outValue1, (FLOAT4)0);

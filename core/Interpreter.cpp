@@ -1,4 +1,5 @@
 #include "Interpreter.h"
+// #include <inttypes.h>
 namespace SNN
 {
     Interpreter::Interpreter(string model_path)
@@ -15,123 +16,130 @@ namespace SNN
     }
     Interpreter::~Interpreter() {}
 
-    void Interpreter::IdentifyOperation(Tensor *snn_tensor, const TfLiteNode &node, tflite::BuiltinOperator tflite_op)
+    void Interpreter::IdentifyOperation(shared_ptr<Tensor> tensor, std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory, const TfLiteNode &node, tflite::BuiltinOperator tflite_op)
     {
+
         TfLiteTensor *tflite_tensor;
-        int i;
-        switch (tflite_op)
+        int i, j, ptr_size;
+        pair<float *, float *> weight_bias;
+        if (tflite_op == tflite::BuiltinOperator_DEPTHWISE_CONV_2D)
         {
-        case tflite::BuiltinOperator_DEPTHWISE_CONV_2D:
-        {
-            if (node.inputs->size != 3)
-            {
-                printf("Error only for dimension 3\n");
-                exit(1);
-            }
-
             TfLiteDepthwiseConvParams *tflite_params = (TfLiteDepthwiseConvParams *)node.builtin_data;
-            DepthwiseConvParams *snn_params = (DepthwiseConvParams *)malloc(sizeof(DepthwiseConvParams));
-            snn_params->stride_height = tflite_params->stride_height;
-            snn_params->stride_width = tflite_params->stride_width;
-            snn_params->dilation_height_factor = tflite_params->dilation_height_factor;
-            snn_params->dilation_width_factor = tflite_params->dilation_width_factor;
-            snn_params->depth_multiplier = tflite_params->depth_multiplier;
-            snn_params->padding = (Padding)tflite_params->padding;
-            snn_params->activation = (FusedActivation)tflite_params->activation;
-            snn_tensor->op_type = DepthwiseConv;
-            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[1]);
-            for (i = 0; i < 4; ++i)
-                snn_params->kernel_dims[i] = tflite_tensor->dims->data[i];
-            snn_params->weight_bytes = tflite_tensor->bytes;
-            snn_params->weights = (float *)malloc(snn_params->weight_bytes);
-            memcpy(snn_params->weights, tflite_tensor->data.f, snn_params->weight_bytes);
-            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[2]);
-            snn_params->bias_dims[0] = tflite_tensor->dims->data[0];
-            snn_params->bias_bytes = tflite_tensor->bytes;
-            snn_params->bias = (float *)malloc(snn_params->bias_bytes);
-            memcpy(snn_params->bias, tflite_tensor->data.f, snn_params->bias_bytes);
-            snn_tensor->op_data = (void *)snn_params;
+            tensor->SetStride(0, static_cast<uint8_t>(tflite_params->stride_height));
+            tensor->SetStride(1, static_cast<uint8_t>(tflite_params->stride_width));
+            tensor->SetDilation(0, static_cast<uint8_t>(tflite_params->dilation_height_factor));
+            tensor->SetDilation(1, static_cast<uint8_t>(tflite_params->dilation_width_factor));
+            tensor->SetPaddingType(tflite_params->padding);
+            tensor->SetOpType(DepthwiseConv);
+            tensor->SetActType(tflite_params->activation);
+            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+                tensor->SetInputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+            ptr_size = (node.inputs->size - 1) / 2;
+            for (i = 0; i < ptr_size; i++)
+            {
+                // alloc weights and bias memory
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i * 2 + 1]);
+                tensor->SetWeightBytes(static_cast<uint32_t>(tflite_tensor->bytes));
+                weight_bias.first = (float *)malloc(tflite_tensor->bytes);
+                for (j = 0; j < 4; ++j)
+                {
+                    tensor->SetKernelShape(j, static_cast<uint8_t>(tflite_tensor->dims->data[j]));
+                }
+                memcpy(weight_bias.first, tflite_tensor->data.f, tflite_tensor->bytes);
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i * 2 + 2]);
+                tensor->SetBiasBytes(static_cast<uint32_t>(tflite_tensor->bytes));
+                weight_bias.second = (float *)malloc(tflite_tensor->bytes);
+                memcpy(weight_bias.second, tflite_tensor->data.f, tflite_tensor->bytes);
+                tensor->SetBiasShape(0, static_cast<uint8_t>(tflite_tensor->dims->data[0]));
+            }
+
+            tensor->SetMemoryPtr(ptr_size);
+            int start_index = mainMemory->size();
+            for (j = start_index; j < start_index + ptr_size; j++)
+            {
+                tensor->SetMemoryPtrIndex(j - start_index, (uint8_t)start_index);
+            }
+            mainMemory->push_back(weight_bias);
         }
-        case tflite::BuiltinOperator_CONV_2D:
+        else if (tflite_op == tflite::BuiltinOperator_CONV_2D)
         {
-            if (node.inputs->size != 3)
-            {
-                printf("Error only for dimension 3\n");
-                exit(1);
-            }
             TfLiteConvParams *tflite_params = (TfLiteConvParams *)node.builtin_data;
-            ConvParams *snn_params = (ConvParams *)malloc(sizeof(ConvParams));
-            snn_params->stride_height = tflite_params->stride_height;
-            snn_params->stride_width = tflite_params->stride_width;
-            snn_params->dilation_height_factor = tflite_params->dilation_height_factor;
-            snn_params->dilation_width_factor = tflite_params->dilation_width_factor;
-            snn_params->padding = (Padding)tflite_params->padding;
-            snn_params->activation = (FusedActivation)tflite_params->activation;
-            snn_tensor->op_type = DepthwiseConv;
-
-            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[1]);
-            for (i = 0; i < 4; ++i)
+            tensor->SetStride(0, static_cast<uint8_t>(tflite_params->stride_height));
+            tensor->SetStride(1, static_cast<uint8_t>(tflite_params->stride_width));
+            tensor->SetDilation(0, static_cast<uint8_t>(tflite_params->dilation_height_factor));
+            tensor->SetDilation(1, static_cast<uint8_t>(tflite_params->dilation_width_factor));
+            tensor->SetPaddingType(tflite_params->padding);
+            tensor->SetOpType(Conv2D);
+            tensor->SetActType(tflite_params->activation);
+            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
+            for (j = 0; j < 4; ++j)
             {
-                snn_params->kernel_dims[i] = tflite_tensor->dims->data[i];
-                // cout << snn_params->kernel_dims[i] << endl;
+                tensor->SetInputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
 
-            snn_params->weight_bytes = tflite_tensor->bytes;
-            snn_params->weights = (float *)malloc(snn_params->weight_bytes);
-            memcpy(snn_params->weights, tflite_tensor->data.f, snn_params->weight_bytes);
-            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[2]);
-            snn_params->bias_bytes = tflite_tensor->bytes;
-            snn_params->bias = (float *)malloc(snn_params->bias_bytes);
-            memcpy(snn_params->bias, tflite_tensor->data.f, snn_params->bias_bytes);
-            snn_tensor->op_data = (void *)snn_params;
-        }
+            ptr_size = (node.inputs->size - 1) / 2;
+            for (i = 0; i < ptr_size; i++)
+            {
+                // alloc weights and bias memory
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i * 2 + 1]);
+                tensor->SetWeightBytes(static_cast<uint32_t>(tflite_tensor->bytes));
+                weight_bias.first = (float *)malloc(tflite_tensor->bytes);
+                for (j = 0; j < 4; ++j)
+                {
+                    tensor->SetKernelShape(j, static_cast<uint8_t>(tflite_tensor->dims->data[j]));
+                }
+                memcpy(weight_bias.first, tflite_tensor->data.f, tflite_tensor->bytes);
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i * 2 + 2]);
+                tensor->SetBiasBytes(static_cast<uint32_t>(tflite_tensor->bytes));
+                weight_bias.second = (float *)malloc(tflite_tensor->bytes);
+                memcpy(weight_bias.second, tflite_tensor->data.f, tflite_tensor->bytes);
+                tensor->SetBiasShape(0, static_cast<uint8_t>(tflite_tensor->dims->data[0]));
+            }
+            tensor->SetMemoryPtr(ptr_size);
+            int start_index = mainMemory->size();
+            for (j = start_index; j < start_index + ptr_size; j++)
+            {
+                tensor->SetMemoryPtrIndex(j - start_index, static_cast<uint8_t>(start_index));
+            }
+            mainMemory->push_back(weight_bias);
         }
     }
-    vector<SNNNode> Interpreter::mGraphToSNNGraph()
+    vector<shared_ptr<Tensor>> Interpreter::mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory)
     {
-        int node_index, i, j, k;
+        int node_index, i, j;
         vector<int> execution_plan = this->tflite_interpreter->execution_plan();
-        vector<SNNNode> GraphNodes;
+        vector<shared_ptr<Tensor>> GraphNodes;
         tflite::BuiltinOperator tflite_op;
-        TfLiteTensor *tflite_tensor;
         printf("INFO: Start converting Tf-Lite graph to SNN graph ... \n");
         for (i = 0; i < execution_plan.size(); ++i)
         {
             node_index = execution_plan[i];
-            SNNNode snnnode;
+            shared_ptr<Tensor> tensor(new Tensor()); // default tensor
             const pair<TfLiteNode, TfLiteRegistration> *node_and_registration = (this->tflite_interpreter)->node_and_registration(node_index);
             const TfLiteNode &node = node_and_registration->first;
             const TfLiteRegistration &registration = node_and_registration->second;
             tflite_op = static_cast<tflite::BuiltinOperator>(registration.builtin_code);
             string op_name = tflite::GetOpNameByRegistration(registration);
-            snnnode.inputs = (IntArray *)malloc(sizeof(IntArray));
-            snnnode.outputs = (IntArray *)malloc(sizeof(IntArray));
-            snnnode.tensor = (Tensor *)malloc(sizeof(Tensor));
-            snnnode.inputs->size = node.inputs->size;
-            snnnode.inputs->data[node.inputs->size] = {};
-            snnnode.outputs->size = node.outputs->size;
-            snnnode.outputs->data[node.outputs->size] = {};
-            IdentifyOperation(snnnode.tensor, node, tflite_op);
-            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
-            //  Future feature:
-            // if we met reshape operators?
-            // dense layers
-            // not only for 4 dims, but also for another
-            for (j = 0; j < tflite_tensor->dims->size; ++j)
-            {
-                snnnode.input_shape[j] = tflite_tensor->dims->data[j];
-            }
-
-            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
-            for (j = 0; j < tflite_tensor->dims->size; ++j)
-            {
-                snnnode.output_shape[j] = tflite_tensor->dims->data[j];
-            }
-
-            snnnode.tensor->device_type = OpenCL;
-            GraphNodes.push_back(snnnode);
+            for (j = 0; j < node.inputs->size; j++)
+                tensor->inputIndex.push_back(node.inputs->data[i]);
+            for (j = 0; j < node.outputs->size; j++)
+                tensor->outputIndex.push_back(node.outputs->data[i]);
+            IdentifyOperation(tensor, mainMemory, node, tflite_op);
+            GraphNodes.push_back(tensor);
         }
-
         return GraphNodes;
     }
 

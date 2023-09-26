@@ -8,9 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "include/SNN/common.h"
-#include "include/SNN/api_types.h"
 #include "include/SNN/SNNDefine.h"
-#include "include/SNN/SNNDefine.h"
+#include "include/SNN/Tensor.h"
 #include "BaseProctocol.h"
 #include "Interpreter.h"
 
@@ -31,7 +30,7 @@ namespace SNN
     class Pipeline : public BaseProtocol
     {
     public:
-        Pipeline(std::string model_path, DeviceType device_type);
+        Pipeline(std::string model_path, BackendConfig &cfg);
         ~Pipeline();
 
     public:
@@ -50,7 +49,8 @@ namespace SNN
         std::shared_ptr<bool[]> firstMallocs;
         std::shared_ptr<NodeFactory> nodefactory;
         std::unique_ptr<Interpreter> interpreter;
-        std::vector<SNNNode> snnGraph;
+        std::vector<std::shared_ptr<Tensor>> snnGraph;
+        std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory;
     };
 }
 #endif // PIPELINE_H

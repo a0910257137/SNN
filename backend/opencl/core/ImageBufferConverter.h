@@ -2,7 +2,7 @@
 #define IMAGEBUFFERCONVERTER_H
 #include <set>
 #include <iostream>
-#include "include/SNN/common.h"
+#include "include/SNN/Tensor.h"
 #include "backend/opencl/core/runtime/OpenCLRuntime.h"
 #include "backend/opencl/core/OpenCLSetting.h"
 #include "backend/opencl/utils/coreUtils.h"
@@ -16,7 +16,7 @@ namespace SNN
         ~ImageBufferConverter();
         ImageBufferConverter(const ImageBufferConverter &) = delete;
         ImageBufferConverter &operator=(const ImageBufferConverter &) = delete;
-        bool ConvertImagetoBuffer(Tensor *inputs, const OpenCLBufferFormat type, bool needwait = false, const std::string &buildOption = "");
+        bool ConvertImagetoBuffer(std::shared_ptr<Tensor> tensor, const OpenCLBufferFormat type, bool needwait = false, const std::string &buildOption = "");
         bool ConvertBuffertoImage(Tensor *inputs);
 
     private:

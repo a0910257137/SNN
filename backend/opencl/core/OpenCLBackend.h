@@ -1,15 +1,11 @@
 #ifndef OPENCLBACKEND_H
 #define OPENCLBACKEND_H
-
-#include <string>
-#include <memory>
-#include "CL/opencl.h"
-#include "CL/cl_half.h"
-#include "OpenCLBackend.h"
+#include <algorithm>
+#include "include/SNN/Tensor.h"
 #include "OpenCLSetting.h"
 #include "runtime/OpenCLRuntime.h"
-#include "include/SNN/api_types.h"
 #include "include/SNN/common.h"
+#include "backend/opencl/utils/coreUtils.h"
 #include <iostream>
 namespace SNN
 {
@@ -25,11 +21,29 @@ namespace SNN
         OpenCLBackend &operator=(const OpenCLBackend &) = delete;
         OpenCLRuntime *CLRuntime() const { return _mCLRuntime; };
 
+        void CopyToDevice(Tensor *srcTensor);
+
+    private:
+        bool OnSetCache();
+        void _AllocHostBuffer(int length) const;
+        cl_mem ConvertToDevice(const Tensor *srcTensor, DataFormat data_format, bool svmFlag);
+        cl_mem ConvertNHWCBufferToImage(const Tensor *tensor, bool needwait, bool svmFlag);
+
     protected:
         OpenCLRuntime *_mCLRuntime = nullptr;
 
     private:
         bool permitFloat16;
+        mutable std::pair<int, cl_mem> mHostBuffer;
+
+    private:
+        // cl_kernel mImageToNCHWBufferFloat;
+        // cl_kernel mImageToNC4HW4BufferFloat;
+        // cl_kernel mNC4HW4BufferToImageFloat;
+        // cl_kernel mNCHWBufferToImageFloat;
+        // cl_kernel mNHWCBufferToImageInt8;
+        cl_kernel mImageToNHWCBufferFloat;
+        cl_kernel mNHWCBufferToImageFloat;
     };
 }
 #endif // OPENCLBACKEND_H

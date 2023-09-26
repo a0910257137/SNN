@@ -31,8 +31,6 @@ namespace SNN
         }
         if ((this->err) != CL_SUCCESS)
             printf("ERROR:  %i in clCreateCommandQueue call !!!\n\n", (this->err));
-
-        // printf("INFO: Allocating device variables\n");
         bool status = OpenCLRuntime::BuildProgramMaps();
         oclCheckError(status, true);
         cl_device_fp_config fp_config;
@@ -45,6 +43,7 @@ namespace SNN
     OpenCLRuntime::~OpenCLRuntime()
     {
         mProgramMaps.clear();
+        mProgramDirty.clear();
     }
     bool OpenCLRuntime::BuildProgramMaps()
     {
@@ -74,6 +73,7 @@ namespace SNN
                     return false;
                 }
                 mProgramMaps.insert(std::pair<std::string, cl_program>(file_name, programRaw));
+                mProgramDirty.insert(std::pair<std::string, bool>(file_name, false));
             }
             closedir(dir);
         }
@@ -86,15 +86,17 @@ namespace SNN
     bool OpenCLRuntime::LoadProgram(const std::string &cl_name, cl_program &program)
     {
         auto buildProgramInter = mProgramMaps.find(cl_name);
+        auto isProgramDirty = mProgramDirty.find(cl_name);
 
         if (buildProgramInter != mProgramMaps.end())
         {
             program = buildProgramInter->second;
+            isProgramDirty->second = true;
             return true;
         }
         else
         {
-            printf("ERROR: Can't load program %s source \n", cl_name);
+            printf("ERROR: Can't load program %s source \n", cl_name.c_str());
             return false;
         }
     }
@@ -111,13 +113,18 @@ namespace SNN
             buildOptionsStr += " -DSET_ATTRIBUTE=false";
         for (auto &option : buildOptions)
             buildOptionsStr += " " + option;
+
         buildOptionsStr += mDefaultBuildParams;
         std::string key = programName + ".cl";
         cl_program program;
+        bool isDirty = this->mProgramDirty.find(key)->second;
         bool status = LoadProgram(key, program);
         oclCheckError(status, true);
-        err = clBuildProgram(program, this->_num_devices, this->_device, buildOptionsStr.c_str(), NULL, NULL);
-        oclCheckError(err, CL_SUCCESS);
+        if (isDirty == false)
+        {
+            err = clBuildProgram(program, this->_num_devices, this->_device, buildOptionsStr.c_str(), NULL, NULL);
+            oclCheckError(err, CL_SUCCESS);
+        }
         cl_kernel kernel = clCreateKernel(program, kernelName.c_str(), &err);
         oclCheckError(err, CL_SUCCESS);
         return kernel;
@@ -128,6 +135,111 @@ namespace SNN
         uint64_t maxWorkGroupSize = 0;
         clGetKernelWorkGroupInfo(kernel, *this->_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(uint64_t), &maxWorkGroupSize, NULL);
         return maxWorkGroupSize;
+    }
+    size_t *OpenCLRuntime::getMaxWorkItemSizes()
+    {
+        cl_int err;
+        cl_uint workItemDims;
+        err = clGetDeviceInfo(_device[0], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(workItemDims), &workItemDims, NULL);
+        size_t *p_max_work_item_sizes = NULL;
+        if (workItemDims < 3)
+        {
+            p_max_work_item_sizes[0] = 8;
+            p_max_work_item_sizes[1] = 8;
+            p_max_work_item_sizes[2] = 8;
+            return p_max_work_item_sizes;
+        }
+        size_t size;
+        err = clGetDeviceInfo(_device[0], CL_DEVICE_MAX_WORK_ITEM_SIZES, 0, NULL, &size);
+        oclCheckError(err, CL_SUCCESS);
+        p_max_work_item_sizes = (size_t *)malloc(size);
+        err = clGetDeviceInfo(_device[0], CL_DEVICE_MAX_WORK_ITEM_SIZES, size, p_max_work_item_sizes, NULL);
+        // for (size_t i = 0; i < size / sizeof(size_t); i++)
+        // {
+        //     printf("max_work_item_size_of_work_group_dim %zu=%zu\n", i, p_max_work_item_sizes[i]);
+        // }
+        oclCheckError(err, CL_SUCCESS);
+        return p_max_work_item_sizes;
+    }
+
+    float OpenCLRuntime::GetCostTime(const cl_event *event)
+    {
+
+        cl_int err = clWaitForEvents(1, event);
+        oclCheckError(err, CL_SUCCESS);
+        cl_ulong time_start, time_end;
+        float total_time;
+        clGetEventProfilingInfo(*event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+        clGetEventProfilingInfo(*event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+        total_time = (time_end - time_start) / 1000000.0f;
+        // printf("\n Execution time in milliseconds = %0.3f ms\n", (total_time / 1000000.0f));
+        return total_time;
+    }
+    std::pair<std::vector<size_t>, size_t> OpenCLRuntime::localWS2DDefault(const std::vector<size_t> &gws,
+                                                                           const size_t maxWorkGroupSize,
+                                                                           OpenCLRuntime *runtime,
+                                                                           const std::string &kernelName,
+                                                                           const cl_kernel &mKernel)
+    {
+
+        float min_cost = INFINITY;
+        // std::cout << min_cost << std::endl;
+        auto maxWorkItemSizes = runtime->getMaxWorkItemSizes();
+        cl_command_queue *commandQueue = runtime->GetCommandQue();
+        size_t lws[] = {1, 1};
+        std::vector<size_t> lws_prefer(2, 1);
+        // std::pair<std::string, uint32_t(*)> info = std::make_pair(kernelName, gws[0]);
+        // for (size_t i = 0; i < 3; i++)
+        // {
+        //     printf("max_work_item_size_of_work_group_dim %zu=%zu\n", i, maxWorkItemSizes[i]);
+        // }
+        err = 0;
+        if (runtime->GetCLTuneLevel() == Fast)
+        {
+            while (lws[1] <= gws[1] && lws[1] <= 6)
+            {
+                lws[0] = 1;
+                while (lws[0] <= gws[0] && lws[0] <= 6)
+                {
+                    if (lws[0] <= maxWorkItemSizes[0] && lws[1] <= maxWorkItemSizes[1] && lws[0] * lws[1] <= maxWorkGroupSize)
+                    {
+                        cl_event event;
+                        size_t internalGlobalWS[2] = {1, 1};
+                        for (size_t i = 0; i < 2; ++i)
+                        {
+                            internalGlobalWS[i] = ROUND_UP(gws[i], MAX((size_t)1, lws[i]));
+                        }
+                        // const size_t lws[2] = {16, MAX((unsigned int)1, maxWorkGroupSize / 16)};
+                        err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, internalGlobalWS, lws, 0, NULL, &event);
+                        oclCheckError(err, CL_SUCCESS);
+                        if (err != CL_SUCCESS)
+                        {
+                            printf("lws tune result errors %s", kernelName.c_str());
+                        }
+                        float cost_time = (float)this->GetCostTime(&event);
+
+                        std::cout << cost_time << std::endl;
+                        if (cost_time < min_cost)
+                        {
+                            min_cost = cost_time;
+                            lws_prefer[0] = lws[0];
+                            lws_prefer[1] = lws[1];
+                        }
+                    }
+                    do
+                    {
+                        lws[0]++;
+                    } while (((2 * gws[0]) % lws[0] > 1) && (lws[0] & (lws[0] - 1)) != 0 && (lws[0] <= gws[0]) && (lws[0] <= 6));
+                }
+                do
+                {
+                    lws[1]++;
+                } while (((2 * gws[1]) % lws[1] > 1) && (lws[1] & (lws[1] - 1)) != 0 && (lws[1] <= gws[1]) && (lws[1] <= 6)); // divisible powOfTwo lessThanSix
+            }
+        }
+        printf("INFO: Find Best local work item for x %lu \n", lws[0]);
+        printf("INFO: Find Best local work item for y %lu \n", lws[1]);
+        // exit(1);
     }
     uint64_t OpenCLRuntime::maxAllocSize() const
     {

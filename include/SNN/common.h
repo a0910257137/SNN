@@ -1,12 +1,23 @@
 #ifndef COMMON_h
 #define COMMON_h
-#include <CL/cl.h>
 #include "op_data.h"
-typedef enum
+typedef struct BackendConfig
 {
-    CPU = 0,
-    OpenCL = 1,
-} DeviceType;
+    enum Type
+    {
+        CPU = 0,
+        OpenCL,
+    };
+
+    enum PrecisionMode
+    {
+        Precision_FP32 = 0,
+        Precision_FP16,
+        Precision_INT8,
+    };
+    Type backendType = OpenCL;
+    PrecisionMode precisionType = Precision_FP32;
+} BackendConfig;
 
 typedef enum
 {
@@ -29,49 +40,10 @@ typedef enum
 typedef enum
 {
     DepthwiseConv = 0,
-    Conv = 1,
+    Conv2D = 1,
     Concat = 2,
     Relu = 3,
     AveragePooling2D = 4,
     MaxPooling2D = 5
 } OpTypes;
-
-typedef struct IntArray
-{
-    int size;
-
-#if defined(_MSC_VER)
-    // Context for why this is needed is in http://b/189926408#comment21
-    int data[1];
-#elif (!defined(__clang__) && defined(__GNUC__) && __GNUC__ == 6 && \
-       __GNUC_MINOR__ >= 1) ||                                      \
-    defined(HEXAGON) ||                                             \
-    (defined(__clang__) && __clang_major__ == 7 && __clang_minor__ == 1)
-    // gcc 6.1+ have a bug where flexible members aren't properly handled
-    // https://github.com/google/re2/commit/b94b7cd42e9f02673cd748c1ac1d16db4052514c
-    int data[0];
-#else
-    int data[];
-#endif
-} IntArray;
-typedef struct Tensor
-{
-    size_t bytes;
-    IntArray *dims;
-    void *op_data;
-    OpTypes op_type;
-    DeviceType device_type;
-    cl_mem image;
-
-} Tensor;
-
-typedef struct SNNNode
-{
-    // Inputs and Outputs to this node expressed as indices into the simulator's tensors.
-    IntArray *inputs, *outputs;
-    int input_shape[4], output_shape[4];
-    void *user_data;
-    bool status;
-    Tensor *tensor;
-} SNNNode;
 #endif

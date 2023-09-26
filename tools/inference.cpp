@@ -11,18 +11,13 @@
 #include "core/Interpreter.h"
 #include "core/Pipeline.h"
 using namespace std;
-// auto tf_tensor_to_vector(tensorflow::Tensor tensor, int32_t tensorSize)
-// {
-//     int32_t *tensor_ptr = tensor.flat<int32_t>().data();
-//     std::vector<int32_t> v(tensor_ptr, tensor_ptr + tensorSize);
-//     return v;
-// }
 
 int main(int argc, char **argv)
 {
-    string path = "/aidata/anders/data_collection/okay/WF/archives/test/FP32.tflite";
-    SNN::Pipeline pipeline(path, OpenCL);
     bool status;
+    BackendConfig cfg;
+    string path = "/aidata/anders/data_collection/okay/WF/archives/test/FP32.tflite";
+    SNN::Pipeline pipeline(path, cfg);
     status = pipeline.GetSNNGraph();
     status = pipeline.BuildSNNGraph();
     return 1;

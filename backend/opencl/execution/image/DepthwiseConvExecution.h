@@ -1,38 +1,35 @@
 #ifndef DEPTHWISECONVEXECUTION_H
 #define DEPTHWISECONVEXECUTION_H
 #include <iostream>
-#include "include/SNN/common.h"
-#include "core/ConvolutionCommon.h"
+#include "ConvBaseExecution.h"
 #include "backend/opencl/core/OpenCLBackend.h"
 #include "backend/opencl/core/ImageBufferConverter.h"
 namespace SNN
 {
-    class DepthwiseConvExecution
+    class DepthwiseConvExecution : public ConvBaseExecution
     {
     public:
-        explicit DepthwiseConvExecution(OpenCLBackend *mbackend);
+        explicit DepthwiseConvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
         ~DepthwiseConvExecution();
         DepthwiseConvExecution(const DepthwiseConvExecution &) = delete;
         DepthwiseConvExecution &operator=(const DepthwiseConvExecution &) = delete;
-        bool onInit(Tensor *inputs);
-        bool onResize(Tensor *inputs, int *input_shape, int *output_shape);
+        bool onResize(std::shared_ptr<Tensor> tensor);
         bool onExecute();
 
     private:
-        OpenCLRuntime *mCLRuntime;
-        size_t mLWS[4] = {0, 0, 0, 0};
-        size_t mGWS[4] = {0, 0, 0, 0};
-        int mStrides[2] = {1, 1};
-        int mPaddings[2] = {0, 0};
-        int mDilations[2] = {1, 1};
-        cl_kernel mKernel;
-        uint32_t mMaxWorkGroupSize;
-        uint32_t mGlobalWorkSize[2] = {1, 1};
-        uint32_t mLocalWorkSize[2] = {1, 1};
-        // std::shared_ptr<DepthwiseConvParams> params;
+        OpenCLBackend *mbackend;
 
-        DepthwiseConvParams *params;
-        // ConvolutionCommon *mCommon;
+    private:
+        std::vector<size_t>
+            mLWS{0, 0, 0, 0};
+        std::vector<size_t> mGWS{0, 0, 0, 0};
+        std::vector<int> mStrides{1, 1};
+        std::vector<int> mPaddings{1, 1};
+        std::vector<int> mDilations{1, 1};
+        std::vector<size_t> mGlobalWorkSize{1, 1};
+        std::vector<size_t> mLocalWorkSize{1, 1};
+        cl_kernel mKernel;
+        size_t mMaxWorkGroupSize;
         std::shared_ptr<ConvolutionCommon> mConvCommon;
     };
 }

@@ -1,7 +1,7 @@
 #include "Pipeline.h"
 namespace SNN
 {
-    Pipeline::Pipeline(std::string model_path, DeviceType device_type)
+    Pipeline::Pipeline(std::string model_path, BackendConfig &cfg)
     {
 
         char *ptr;
@@ -27,35 +27,19 @@ namespace SNN
             std::cout << "ERROR: The" << inputModelFormat << "model format are not supported in SNN " << SNN_VERSION << "!!" << std::endl;
             exit(1);
         }
-        nodefactory = std::make_shared<NodeFactory>(false);
-        switch (device_type)
-        {
-        case CPU:
-        {
-            printf("INFO: Enable CPU backend\n");
-            break;
-        }
-
-        case OpenCL:
-        {
-            printf("INFO: Enable OpenCL backend\n");
-            nodefactory->RegistOpenCLBackend();
-        }
-        default:
-            break;
-        }
+        nodefactory = std::make_shared<NodeFactory>(cfg);
         interpreter = std::make_unique<Interpreter>(model_path);
-        // SNN::Interpreter interpreter(model_path);
+        mainMemory = std::make_shared<std::vector<std::pair<float *, float *>>>();
     }
     Pipeline::~Pipeline()
     {
     }
     bool Pipeline::GetSNNGraph()
     {
-        snnGraph = interpreter->mGraphToSNNGraph();
+        snnGraph = interpreter->mGraphToSNNGraph(mainMemory);
         if (snnGraph.size() == 0)
         {
-            printf("ERROR: Gernerated empty SNN graph by %s\n", inputModelFormat);
+            printf("ERROR: Gernerated empty SNN graph by %s\n", inputModelFormat.c_str());
             SNN_CHECK_SUCCESS(snnGraph.size() != 0, true);
         }
         else
@@ -65,14 +49,13 @@ namespace SNN
     {
         bool status = true;
         firstMallocs = std::shared_ptr<bool[]>(new bool[10]);
-        std::vector<SNNNode>::iterator iter = snnGraph.begin();
         int i = 0;
-        while (iter != snnGraph.end())
+        for (std::shared_ptr<Tensor> tensor : snnGraph)
         {
-            status |= nodefactory->BuildOperation(iter->tensor, iter->input_shape, iter->output_shape);
+            tensor->SetMainMemory(mainMemory);
+            status |= nodefactory->BuildOperation(tensor);
             if (status == false)
                 printf("ERROR: build error !! \n");
-            iter++;
             i++;
         }
         return status;

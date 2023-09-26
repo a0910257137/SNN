@@ -4,8 +4,7 @@
 #include <unistd.h>
 #include <iostream>
 #include "misc/utils.h"
-#include "include/SNN/common.h"
-#include "include/SNN/api_types.h"
+#include "include/SNN/Tensor.h"
 #include "backend/opencl/core/OpenCLBackend.h"
 #include "backend/NodeFactory.h"
 #include "tensorflow/lite/model.h"
@@ -15,6 +14,7 @@
 #include "tensorflow/lite/c/builtin_op_data.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
+
 #define TFLITE_MINIMAL_CHECK(x)                                  \
     if (!(x))                                                    \
     {                                                            \
@@ -31,9 +31,8 @@ namespace SNN
         ~Interpreter();
         Interpreter(const Interpreter &) = delete;
         Interpreter &operator=(const Interpreter &) = delete;
-        void GetInferGraph();
-        vector<SNNNode> mGraphToSNNGraph();
-        void IdentifyOperation(Tensor *snn_params, const TfLiteNode &tflite_params, tflite::BuiltinOperator tflite_op);
+        vector<shared_ptr<Tensor>> mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory);
+        void IdentifyOperation(shared_ptr<Tensor> tensor, std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory, const TfLiteNode &tflite_params, tflite::BuiltinOperator tflite_op);
 
     private:
         int threads;
