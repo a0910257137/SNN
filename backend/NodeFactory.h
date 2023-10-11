@@ -3,6 +3,7 @@
 #include "backend/opencl/core/OpenCLBackend.h"
 #include "backend/cpu/CPUBackend.h"
 #include "backend/opencl/execution/image/DepthwiseConvExecution.h"
+#include "backend/opencl/execution/image/ConvExecution.h"
 #include "include/SNN/Tensor.h"
 
 namespace SNN

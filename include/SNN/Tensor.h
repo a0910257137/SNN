@@ -108,7 +108,7 @@ namespace SNN
          *
          * @return Output kernel shapes.
          */
-        const std::vector<uint8_t> KernelShape() const;
+        const std::vector<int> KernelShape() const;
         void SetMemoryPtr(int size);
 
         std::vector<int> inputIndex;
@@ -118,6 +118,7 @@ namespace SNN
         /**
          * Get member functions
          **/
+
         inline uint32_t batch() const
         {
             return mBuffer.inputShapes[0];
@@ -134,11 +135,11 @@ namespace SNN
         {
             return mBuffer.inputShapes[3];
         }
-        inline uint8_t stride(int index) const
+        inline int stride(int index) const
         {
             return mBuffer.strides[index];
         }
-        inline uint8_t dilation(int index) const
+        inline int dilation(int index) const
         {
             return mBuffer.dilations[index];
         }
@@ -167,7 +168,10 @@ namespace SNN
         {
             return mBuffer.mDeviceBuffer.inputData;
         }
-
+        inline cl_mem GetDeviceOutputData() const
+        {
+            return mBuffer.mDeviceBuffer.outputData;
+        }
         inline cl_mem GetDeviceFilter() const
         {
             return mBuffer.mDeviceBuffer.mFilter;
@@ -181,6 +185,10 @@ namespace SNN
             return mainMemory;
         }
 
+        inline std::string GetName() const
+        {
+            return name;
+        }
         inline const std::vector<uint8_t> &GetMemoryPtrIndex() const
         {
             return mBuffer.hostPtr;
@@ -208,7 +216,7 @@ namespace SNN
         /**
          * Kernel information such as stride, shape, bytes and so on ...
          */
-        inline void SetStride(int index, uint8_t stride)
+        inline void SetStride(int index, int stride)
         {
             mBuffer.strides[index] = stride;
         }
@@ -220,7 +228,7 @@ namespace SNN
         {
             mBuffer.biasBytes = bytes;
         }
-        inline void SetDilation(int index, uint8_t dil)
+        inline void SetDilation(int index, int dil)
         {
             mBuffer.dilations[index] = dil;
         }
@@ -232,11 +240,11 @@ namespace SNN
         {
             mBuffer.outputShapes[index] = value;
         }
-        inline void SetKernelShape(int index, uint8_t value)
+        inline void SetKernelShape(int index, int value)
         {
             mBuffer.kernelShapes[index] = value;
         }
-        inline void SetBiasShape(int index, uint8_t value)
+        inline void SetBiasShape(int index, int value)
         {
             mBuffer.biasShapes[index] = value;
         }
@@ -252,6 +260,10 @@ namespace SNN
         {
             mBuffer.mDeviceBuffer.mBias = data;
         }
+        inline void SetDeviceOutputData(cl_mem &data)
+        {
+            mBuffer.mDeviceBuffer.outputData = data;
+        }
         void SetMainMemory(std::shared_ptr<std::vector<std::pair<float *, float *>>> memory)
         {
             mainMemory = memory;
@@ -262,6 +274,7 @@ namespace SNN
 
     protected:
         std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory;
+        std::string name;
         halide_buffer_t mBuffer;
     };
 }

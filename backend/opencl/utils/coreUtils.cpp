@@ -2,13 +2,13 @@
 namespace SNN
 {
 
-    void getImageShape(const std::vector<uint8_t> &shape, const OpenCLBufferFormat type, size_t *imageShape)
+    void getImageShape(const std::vector<int> &shape, const OpenCLBufferFormat type, size_t *imageShape)
     {
         SNN_ASSERT(imageShape != nullptr);
         if (type == CONV2D_FILTER)
         {
-            imageShape[0] = static_cast<size_t>(shape[0] * shape[2] * shape[3]);
-            imageShape[1] = static_cast<size_t>(UP_DIV(shape[1], 4));
+            imageShape[0] = static_cast<size_t>(shape[1]);
+            imageShape[1] = static_cast<size_t>(UP_DIV(shape[0], 4) * shape[2] * shape[3]);
         }
         else if (type == DW_CONV2D_FILTER)
         {
@@ -20,6 +20,19 @@ namespace SNN
         {
             imageShape[0] = static_cast<size_t>(UP_DIV(shape[3], 4) * shape[2]);
             imageShape[1] = static_cast<size_t>(shape[0] * shape[1]);
+        }
+        else if (type == ARGUMENT)
+        {
+            if (shape.size() == 4)
+            {
+                imageShape[0] = static_cast<size_t>(UP_DIV(shape[3], 4));
+                imageShape[1] = static_cast<size_t>(1);
+            }
+            else
+            {
+                imageShape[0] = UP_DIV(shape[0], 4);
+                imageShape[1] = static_cast<size_t>(1);
+            }
         }
         else if (type == CONV2D1x1_OPT_FILTER)
         {

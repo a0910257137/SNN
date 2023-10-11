@@ -115,6 +115,7 @@ typedef struct halide_CL_buffer_t
 {
     cl_mem inputData = NULL;
     cl_mem mFilter = NULL, mBias = NULL;
+    cl_mem outputData = NULL;
 } halide_CL_buffer_t;
 
 /**
@@ -141,13 +142,13 @@ typedef struct halide_buffer_t
     /** The dimensionality of the buffer. */
     int32_t dimensions;
     /**The kernel stride*/
-    std::vector<uint8_t> strides{0, 0};
+    std::vector<int> strides{0, 0};
     /**The kernel dilation*/
-    std::vector<uint8_t> dilations{0, 0};
+    std::vector<int> dilations{0, 0};
     /**The kernel weight shape*/
-    std::vector<uint8_t> kernelShapes{0, 0, 0, 0};
+    std::vector<int> kernelShapes{0, 0, 0, 0};
     /**The kernel bias shape*/
-    std::vector<uint8_t> biasShapes{0};
+    std::vector<int> biasShapes{0};
     /**
      * The kernel weight and bias data bytes
      */

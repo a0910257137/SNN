@@ -39,15 +39,13 @@ namespace SNN
         cl_context &GPUcontext = _mCLRuntime->GetGPUContext();
         cl_command_queue *commandQueue = _mCLRuntime->GetCommandQue();
         cl_image_format clImageFormat;
-
         clImageFormat.image_channel_order = CL_RGBA;
         clImageFormat.image_channel_data_type = CL_FLOAT;
-
         const std::vector<int> outputShape = TensorShapeFormat(tensor);
-        cl_mem outputData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, (size_t)outputShape[1], (size_t)outputShape[2], 0, NULL, &err);
+        size_t imageWidth = outputShape[2] * UP_DIV(outputShape[3], 4), imageHeight = outputShape[0] * outputShape[1];
+        cl_mem outputData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageWidth, imageHeight, 0, NULL, &err);
         uint32_t outputGlobalWorkSize[2] = {static_cast<uint32_t>(UP_DIV(outputShape[3], 4) * outputShape[2]),
                                             static_cast<uint32_t>(outputShape[0] * outputShape[1])};
-
         if (mNHWCBufferToImageFloat == NULL)
         {
             std::set<std::string> buildOptions;
@@ -105,9 +103,10 @@ namespace SNN
         const std::vector<int> &outputShape = tensor->OutputShape();
         int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
         this->_AllocHostBuffer(buffer_sizes);
-        float pseudoIputData[buffer_sizes / sizeof(float)] = {};
-        err |= clEnqueueWriteBuffer(commandQueue[0], mHostBuffer.second, CL_TRUE, 0, buffer_sizes, pseudoIputData, 0, NULL, NULL);
-        oclCheckError(err, CL_SUCCESS);
+        int elementSize = buffer_sizes / sizeof(float);
+        // float pseudoIputData[elementSize] = {};
+        // err |= clEnqueueWriteBuffer(commandQueue[0], mHostBuffer.second, CL_TRUE, 0, buffer_sizes, pseudoIputData, 0, NULL, NULL);
+        // oclCheckError(err, CL_SUCCESS);
         DataFormat data_format = tensor->data_format;
         cl_mem outputData = this->ConvertToDevice(tensor, data_format, false);
         err |= clFinish(commandQueue[0]);

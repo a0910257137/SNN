@@ -33,6 +33,7 @@ namespace SNN
         Interpreter &operator=(const Interpreter &) = delete;
         vector<shared_ptr<Tensor>> mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory);
         void IdentifyOperation(shared_ptr<Tensor> tensor, std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory, const TfLiteNode &tflite_params, tflite::BuiltinOperator tflite_op);
+        void Tranpose(float *src, float *dst, FilterFormat inFormat, FilterFormat outFormat, int *shapDims);
 
     private:
         int threads;

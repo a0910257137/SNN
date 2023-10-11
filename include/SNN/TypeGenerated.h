@@ -5,6 +5,15 @@ enum DataFormat
     DATA_FORMAT_NHWC = 0,
     DATA_FORMAT_NCHW,
 };
+enum FilterFormat
+{
+    FILTER_FORMAT_OHWI = 0,
+    FILTER_FORMAT_OIHW = 1,
+    FILTER_FORMAT_IOHW = 2,
+    FILTER_FORMAT_MHWI = 3,
+    FILTER_FORMAT_MIHW = 4,
+
+};
 enum DataType
 {
     DataType_DT_INVALID = 0,

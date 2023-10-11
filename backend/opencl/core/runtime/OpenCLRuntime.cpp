@@ -39,6 +39,7 @@ namespace SNN
         if (mIsDeviceSupportedFP16)
             printf("INFO: Device is supported half-precision\n");
         printf("INFO: ================Finish initialization of OpenCL device================\n");
+        mGpuType = OTHER;
     }
     OpenCLRuntime::~OpenCLRuntime()
     {
@@ -161,7 +162,11 @@ namespace SNN
         oclCheckError(err, CL_SUCCESS);
         return p_max_work_item_sizes;
     }
+    std::map<std::pair<std::string, std::vector<size_t>>, std::pair<std::vector<size_t>, float>> &OpenCLRuntime::TunedLwsMap()
+    {
 
+        return mTunedLws;
+    }
     float OpenCLRuntime::GetCostTime(const cl_event *event)
     {
 
@@ -175,25 +180,29 @@ namespace SNN
         // printf("\n Execution time in milliseconds = %0.3f ms\n", (total_time / 1000000.0f));
         return total_time;
     }
-    std::pair<std::vector<size_t>, size_t> OpenCLRuntime::localWS2DDefault(const std::vector<size_t> &gws,
-                                                                           const size_t maxWorkGroupSize,
-                                                                           OpenCLRuntime *runtime,
-                                                                           const std::string &kernelName,
-                                                                           const cl_kernel &mKernel)
+    std::pair<std::vector<size_t>, float_t> OpenCLRuntime::localWS2DDefault(const std::vector<size_t> &gws,
+                                                                            const size_t maxWorkGroupSize,
+                                                                            OpenCLRuntime *runtime,
+                                                                            const std::string &kernelName,
+                                                                            const cl_kernel &mKernel)
     {
-
         float min_cost = INFINITY;
-        // std::cout << min_cost << std::endl;
         auto maxWorkItemSizes = runtime->getMaxWorkItemSizes();
         cl_command_queue *commandQueue = runtime->GetCommandQue();
         size_t lws[] = {1, 1};
         std::vector<size_t> lws_prefer(2, 1);
-        // std::pair<std::string, uint32_t(*)> info = std::make_pair(kernelName, gws[0]);
+        auto &tunedLws = runtime->TunedLwsMap();
+        std::pair<std::string, std::vector<size_t>> info = std::make_pair(kernelName, gws);
+        if (tunedLws.find(info) != tunedLws.end())
+        {
+            return tunedLws[info];
+        }
         // for (size_t i = 0; i < 3; i++)
         // {
         //     printf("max_work_item_size_of_work_group_dim %zu=%zu\n", i, maxWorkItemSizes[i]);
         // }
         err = 0;
+
         if (runtime->GetCLTuneLevel() == Fast)
         {
             while (lws[1] <= gws[1] && lws[1] <= 6)
@@ -203,6 +212,7 @@ namespace SNN
                 {
                     if (lws[0] <= maxWorkItemSizes[0] && lws[1] <= maxWorkItemSizes[1] && lws[0] * lws[1] <= maxWorkGroupSize)
                     {
+
                         cl_event event;
                         size_t internalGlobalWS[2] = {1, 1};
                         for (size_t i = 0; i < 2; ++i)
@@ -212,13 +222,13 @@ namespace SNN
                         // const size_t lws[2] = {16, MAX((unsigned int)1, maxWorkGroupSize / 16)};
                         err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, internalGlobalWS, lws, 0, NULL, &event);
                         oclCheckError(err, CL_SUCCESS);
+
                         if (err != CL_SUCCESS)
                         {
                             printf("lws tune result errors %s", kernelName.c_str());
                         }
                         float cost_time = (float)this->GetCostTime(&event);
-
-                        std::cout << cost_time << std::endl;
+                        // std::cout << cost_time << std::endl;
                         if (cost_time < min_cost)
                         {
                             min_cost = cost_time;
@@ -231,15 +241,43 @@ namespace SNN
                         lws[0]++;
                     } while (((2 * gws[0]) % lws[0] > 1) && (lws[0] & (lws[0] - 1)) != 0 && (lws[0] <= gws[0]) && (lws[0] <= 6));
                 }
+                // float *a = (float *)malloc(320 * 320 * 24 * sizeof(float));
                 do
                 {
                     lws[1]++;
                 } while (((2 * gws[1]) % lws[1] > 1) && (lws[1] & (lws[1] - 1)) != 0 && (lws[1] <= gws[1]) && (lws[1] <= 6)); // divisible powOfTwo lessThanSix
             }
         }
-        printf("INFO: Find Best local work item for x %lu \n", lws[0]);
-        printf("INFO: Find Best local work item for y %lu \n", lws[1]);
-        // exit(1);
+        else if (runtime->GetCLTuneLevel() == None)
+        {
+            // define not tune method to choose lws
+            lws_prefer[0] = 0;
+            lws_prefer[1] = 0;
+            min_cost = 0.0f;
+        }
+
+        if (runtime->GetCLTuneLevel() != None)
+        {
+            cl_event event;
+            size_t gw_arr[2] = {gws[0], gws[1]};
+            err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, gw_arr, NULL, 0, NULL, &event);
+            oclCheckError(err, CL_SUCCESS);
+
+            float cost_time = runtime->GetCostTime(&event);
+            if (cost_time < min_cost)
+            {
+                lws_prefer[0] = 0;
+                lws_prefer[1] = 0;
+                min_cost = cost_time;
+            }
+        }
+        if (tunedLws.find(info) == tunedLws.end())
+        {
+            tunedLws.insert(std::make_pair(info, std::make_pair(lws_prefer, min_cost)));
+        }
+        // printf("INFO: Find Best local work item for x %lu \n", lws[0]);
+        // printf("INFO: Find Best local work item for y %lu \n", lws[1]);
+        return std::make_pair(lws_prefer, min_cost);
     }
     uint64_t OpenCLRuntime::maxAllocSize() const
     {

@@ -12,5 +12,7 @@
 #include <algorithm>
 
 static inline int argmax(std::vector<float> *);
+// inline void Tranpose(float *src, float *dst, FilterFormat inFormat, FilterFormat outFormat, int *shapDims);
+
 void print(int);
 #endif // UTILS_H__

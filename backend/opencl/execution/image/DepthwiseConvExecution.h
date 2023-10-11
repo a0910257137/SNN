@@ -20,8 +20,7 @@ namespace SNN
         OpenCLBackend *mbackend;
 
     private:
-        std::vector<size_t>
-            mLWS{0, 0, 0, 0};
+        std::vector<size_t> mLWS{0, 0, 0, 0};
         std::vector<size_t> mGWS{0, 0, 0, 0};
         std::vector<int> mStrides{1, 1};
         std::vector<int> mPaddings{1, 1};
@@ -31,6 +30,7 @@ namespace SNN
         cl_kernel mKernel;
         size_t mMaxWorkGroupSize;
         std::shared_ptr<ConvolutionCommon> mConvCommon;
+        ImageBufferConverter *mImageConvert;
     };
 }
 #endif // DEPTHWISECONVEXECUTION_h

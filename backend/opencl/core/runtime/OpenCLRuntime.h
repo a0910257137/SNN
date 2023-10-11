@@ -18,6 +18,20 @@
 
 namespace SNN
 {
+    enum GpuType
+    {
+        MALI = 0,
+        ADRENO = 1,
+        RADEON = 2,
+        INTEL = 3,
+        OTHER = 4
+    };
+    enum GpuMemObject
+    {
+        AUTO = 0,
+        BUFFER = 1,
+        IMAGE = 2
+    };
     enum CLTuneLevel
     {
         None = 0,
@@ -41,16 +55,21 @@ namespace SNN
         cl_context &GetGPUContext() { return _GPUContext; };
         uint64_t maxAllocSize() const;
         uint64_t getMaxWorkGroupSize(const cl_kernel &kernel);
-        std::pair<std::vector<size_t>, size_t> localWS2DDefault(const std::vector<size_t> &gws,
-                                                                const size_t maxWorkGroupSize,
-                                                                OpenCLRuntime *runtime,
-                                                                const std::string &kernelName,
-                                                                const cl_kernel &mKernel);
+        std::pair<std::vector<size_t>, float> localWS2DDefault(const std::vector<size_t> &gws,
+                                                               const size_t maxWorkGroupSize,
+                                                               OpenCLRuntime *runtime,
+                                                               const std::string &kernelName,
+                                                               const cl_kernel &mKernel);
+
+        std::map<std::pair<std::string, std::vector<size_t>>, std::pair<std::vector<size_t>, float_t>> &TunedLwsMap();
         CLTuneLevel GetCLTuneLevel()
         {
             return mTuneLevel;
         }
-
+        GpuType GetGpuType()
+        {
+            return mGpuType;
+        }
         float GetCostTime(const cl_event *event);
         size_t *getMaxWorkItemSizes();
         bool isSupportedFP16() const;
@@ -78,8 +97,11 @@ namespace SNN
         uint32_t mMaxMemAllocSize;
         bool mIsSupportedFP16 = false;
         bool mIsDeviceSupportedFP16 = false;
+        GpuType mGpuType;
         float mCLVersion = 3.0f;
         CLTuneLevel mTuneLevel = Fast;
+
+        std::map<std::pair<std::string, std::vector<size_t>>, std::pair<std::vector<size_t>, float_t>> mTunedLws;
     };
 }
 #endif // OpenCLRuntime_H__

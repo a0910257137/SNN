@@ -62,6 +62,5 @@ namespace SNN
     }
     ConvBaseExecution::~ConvBaseExecution()
     {
-        printf("Realse base execution ");
     }
 } // SNN

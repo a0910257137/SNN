@@ -7,7 +7,6 @@
 #include <memory>
 #include "include/SNN/op_data.h"
 #include "include/SNN/Tensor.h"
-// #include "include/SNN/common.h"
 namespace SNN
 {
     class ConvolutionCommon : public BaseProtocol

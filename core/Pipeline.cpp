@@ -47,6 +47,7 @@ namespace SNN
     }
     bool Pipeline::BuildSNNGraph()
     {
+
         bool status = true;
         firstMallocs = std::shared_ptr<bool[]>(new bool[10]);
         int i = 0;
@@ -58,6 +59,7 @@ namespace SNN
                 printf("ERROR: build error !! \n");
             i++;
         }
+
         return status;
     }
 
