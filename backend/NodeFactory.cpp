@@ -1,4 +1,3 @@
-
 #include "NodeFactory.h"
 #include "include/SNN/common.h"
 
@@ -39,16 +38,51 @@ namespace SNN
         else if (tensor->GetOpType() == Concat)
         {
         }
-        else if (tensor->GetOpType() == AveragePooling2D)
+        else if (tensor->GetOpType() == AVERAGE_POOL_2D)
         {
+            PoolExecution op(tensor, (OpenCLBackend *)this->_mBackend);
+            op.onResize(tensor);
         }
-        else if (tensor->GetOpType() == MaxPooling2D)
+        else if (tensor->GetOpType() == MAX_POOL_2D)
         {
+            PoolExecution op(tensor, (OpenCLBackend *)this->_mBackend);
+            op.onResize(tensor);
         }
-        // else if (kernelData->op_type == Relu)
-        // {
-        // }
-
+        else if (tensor->GetOpType() == RESIZE_NEAREST_NEIGHBOR)
+        {
+            InterpExecution op(tensor, (OpenCLBackend *)this->_mBackend);
+            op.onResize(tensor);
+        }
+        else if (tensor->GetOpType() == CONCATENATION)
+        {
+            ConcatExecution op(tensor, (OpenCLBackend *)this->_mBackend);
+            op.onResize(tensor);
+        }
+        else if (tensor->GetOpType() == ADD)
+        {
+            const std::string comput = "in0+in1";
+            EltwiseExecution op(tensor, (OpenCLBackend *)this->_mBackend, comput);
+            op.onResize(tensor);
+            exit(1);
+        }
+        else if (tensor->GetOpType() == SUB)
+        {
+            const std::string comput = "in0-in1";
+            EltwiseExecution op(tensor, (OpenCLBackend *)this->_mBackend, comput);
+            op.onResize(tensor);
+        }
+        else if (tensor->GetOpType() == MUL)
+        {
+            const std::string comput = "in0*in1";
+            EltwiseExecution op(tensor, (OpenCLBackend *)this->_mBackend, comput);
+            op.onResize(tensor);
+        }
+        else if (tensor->GetOpType() == REALDIV)
+        {
+            const std::string comput = "sign(in1)*in0/(fabs(in1)>(FLOAT4)((FLOAT)0.0000001)?fabs(in1):(FLOAT4)((FLOAT)0.0000001))";
+            EltwiseExecution op(tensor, (OpenCLBackend *)this->_mBackend, comput);
+            op.onResize(tensor);
+        }
         return true;
     }
 

@@ -16,7 +16,10 @@ namespace SNN
         int mPadY = 0, mPadX = 0;
         // input_shape [B, H, W, C]
         // get same for padding size X, Y
-        const std::vector<int> &inputShape = tensor->InputShape();
+        const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
+        SNN_ASSERT(inputShapes.size() == 1);
+        const std::vector<int> &inputShape = inputShapes[0];
+
         const std::vector<int> &outputShape = tensor->OutputShape();
         const std::vector<int> &kernelShape = tensor->KernelShape();
 

@@ -64,7 +64,7 @@ namespace SNN
          * @brief get data type.
          * @return data type.
          */
-        inline halide_type_t getType() const
+        inline halide_type_t GetType() const
         {
             return mBuffer.type;
         }
@@ -97,7 +97,7 @@ namespace SNN
          * @brief Get input Tensor dimensions
          * @return Input Tensor dimensions.
          */
-        const std::vector<int> InputShape() const;
+        const std::vector<std::vector<int>> InputShape() const;
         /**
          * @brief Get output Tensor dimensions
          * @return Output Tensor dimensions.
@@ -119,21 +119,21 @@ namespace SNN
          * Get member functions
          **/
 
-        inline uint32_t batch() const
+        inline uint32_t batch(int index) const
         {
-            return mBuffer.inputShapes[0];
+            return mBuffer.inputShapes[index][0];
         }
-        inline uint32_t height() const
+        inline uint32_t height(int index) const
         {
-            return mBuffer.inputShapes[1];
+            return mBuffer.inputShapes[index][1];
         }
-        inline uint32_t width() const
+        inline uint32_t width(int index) const
         {
-            return mBuffer.inputShapes[2];
+            return mBuffer.inputShapes[index][2];
         }
-        inline uint32_t channel() const
+        inline uint32_t channel(int index) const
         {
-            return mBuffer.inputShapes[3];
+            return mBuffer.inputShapes[index][3];
         }
         inline int stride(int index) const
         {
@@ -163,7 +163,10 @@ namespace SNN
         {
             return mBuffer.paddingType;
         }
-
+        inline int GetConcatAxis() const
+        {
+            return mBuffer.axis;
+        }
         inline cl_mem GetDeviceInputData() const
         {
             return mBuffer.mDeviceBuffer.inputData;
@@ -213,6 +216,10 @@ namespace SNN
         {
             mBuffer.actType = value;
         }
+        inline void SetConcatAxis(int value)
+        {
+            mBuffer.axis = value;
+        }
         /**
          * Kernel information such as stride, shape, bytes and so on ...
          */
@@ -232,9 +239,9 @@ namespace SNN
         {
             mBuffer.dilations[index] = dil;
         }
-        inline void SetInputShape(int index, uint32_t value)
+        inline void SetInputShape(std::vector<uint32_t> &shape)
         {
-            mBuffer.inputShapes[index] = value;
+            mBuffer.inputShapes.push_back(shape);
         }
         inline void SetOutputShape(int index, uint32_t value)
         {
@@ -271,6 +278,7 @@ namespace SNN
 
     public:
         DataFormat data_format = DATA_FORMAT_NHWC;
+        bool is_init = true;
 
     protected:
         std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory;

@@ -1,5 +1,6 @@
 #include "DepthwiseConvExecution.h"
 #include "backend/opencl/core/runtime/OpenCLRuntime.h"
+
 namespace SNN
 {
     DepthwiseConvExecution::DepthwiseConvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend) : ConvBaseExecution(tensor, mbackend)
@@ -9,7 +10,6 @@ namespace SNN
         mConvCommon = std::make_shared<ConvolutionCommon>();
         mImageConvert = new ImageBufferConverter(mOpenCLRuntime);
         mStrides[0] = tensor->stride(0), mStrides[1] = tensor->stride(0);
-        // mStrides[0] = 1, mStrides[1] = 1;
         mDilations[0] = tensor->dilation(0), mDilations[1] = tensor->dilation(1);
         std::vector<int> kernelShape = tensor->KernelShape();
         int kernelMultiplier = kernelShape[0],
@@ -49,7 +49,10 @@ namespace SNN
     }
     bool DepthwiseConvExecution::onResize(std::shared_ptr<Tensor> tensor)
     {
-        const std::vector<int> &inputShape = tensor->InputShape();
+        const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
+        SNN_ASSERT(inputShapes.size() == 1);
+        const std::vector<int> &inputShape = inputShapes[0];
+
         const std::vector<int> &outputShape = tensor->OutputShape();
         const std::vector<int> &kernelVectShape = tensor->KernelShape();
         mGlobalWorkSize[0] = UP_DIV(outputShape[3], 4) * UP_DIV(outputShape[2], 4);

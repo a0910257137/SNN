@@ -4,6 +4,11 @@
 #include "backend/cpu/CPUBackend.h"
 #include "backend/opencl/execution/image/DepthwiseConvExecution.h"
 #include "backend/opencl/execution/image/ConvExecution.h"
+#include "backend/opencl/execution/image/InterpExecution.h"
+#include "backend/opencl/execution/image/PoolExecution.h"
+#include "backend/opencl/execution/image/ConcatExecution.h"
+#include "backend/opencl/execution/image/AddN.h"
+#include "backend/opencl/execution/image/EltwiseExecution.h"
 #include "include/SNN/Tensor.h"
 
 namespace SNN

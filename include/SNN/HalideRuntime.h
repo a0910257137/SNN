@@ -152,11 +152,12 @@ typedef struct halide_buffer_t
     /**
      * The kernel weight and bias data bytes
      */
-    uint32_t weightBytes, biasBytes;
+    uint32_t weightBytes = 0, biasBytes = 0;
     /**
      * Input data shape
      */
-    uint32_t inputShapes[4] = {};
+    std::vector<std::vector<uint32_t>> inputShapes;
+    // uint32_t inputShapes[4] = {};
     /**
      * Pass to kernel the output shape is ?
      */
@@ -173,7 +174,10 @@ typedef struct halide_buffer_t
      * Pads the buffer up to a multiple of 8 bytes
      */
     int paddingType;
-
+    /**
+     * For inform concat axis
+     */
+    int axis = -1;
     /** Support opencl buffer*/
     halide_CL_buffer_t mDeviceBuffer;
 } halide_buffer_t;

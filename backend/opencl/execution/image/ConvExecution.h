@@ -12,11 +12,11 @@ namespace SNN
     {
     public:
         explicit ConvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
-        ~ConvExecution();
+        virtual ~ConvExecution();
         ConvExecution(const ConvExecution &) = delete;
         ConvExecution &operator=(const ConvExecution &) = delete;
-        bool onResize(std::shared_ptr<Tensor> tensor);
-        bool onExecute();
+        virtual bool onResize(std::shared_ptr<Tensor> tensor);
+        virtual bool onExecute();
 
     private:
         OpenCLBackend *mbackend;
@@ -25,8 +25,8 @@ namespace SNN
         std::vector<int> mStrides{1, 1};
         std::vector<int> mPaddings{0, 0};
         std::vector<int> mDilations{1, 1};
-        std::vector<size_t> mGlobalWorkSize{1, 1, 1};
-        std::vector<size_t> mLocalWorkSize{1, 1, 1};
+        std::vector<size_t> mGWS{1, 1, 1};
+        std::vector<size_t> mLWS{1, 1, 1};
         cl_kernel mKernel;
         uint32_t mMaxWorkGroupSize;
         bool mIsTurn;

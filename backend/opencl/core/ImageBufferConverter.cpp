@@ -171,7 +171,11 @@ namespace SNN
     bool ImageBufferConverter::ConvertImageToNHWCBuffer(std::shared_ptr<Tensor> tensor, cl_kernel &imageToBufferKernel,
                                                         OpenCLRuntime *runtime, bool needWait, bool svmFlag)
     {
-        const std::vector<int> &inputShape = tensor->InputShape();
+
+        // const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
+        // SNN_ASSERT(inputShapes.size() == 1);
+        // const std::vector<int> &inputShape = inputShapes[0];
+
         const std::vector<int> &outputShape = tensor->OutputShape();
         int in_gws[2] = {static_cast<int>(UP_DIV(outputShape[3], 4)) * outputShape[2],
                          static_cast<int>(outputShape[0] * outputShape[1])};
@@ -187,7 +191,7 @@ namespace SNN
         cl_context &GPUcontext = runtime->GetGPUContext();
         cl_command_queue *commandQueue = runtime->GetCommandQue();
         const cl_mem &mDeviceImage = tensor->GetDeviceOutputData();
-        // float *h_data = (float *)malloc(buffer_sizes);
+        float *h_data = (float *)malloc(buffer_sizes);
         cl_mem mhostBuffer = clCreateBuffer(GPUcontext, CL_MEM_READ_WRITE, buffer_sizes, NULL, &err);
         oclCheckError(err, CL_SUCCESS);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &in_gws[0]);
@@ -204,11 +208,11 @@ namespace SNN
         size_t roundUpGroupWorkSize[2] = {ROUND_UP(in_gws[0], lws[0]), ROUND_UP(in_gws[1], lws[1])};
         err |= clEnqueueNDRangeKernel(commandQueue[0], imageToBufferKernel, 2, NULL, roundUpGroupWorkSize, lws, 0, NULL, &event);
         oclCheckError(err, CL_SUCCESS);
-        // err |= clEnqueueReadBuffer(commandQueue[0], mhostBuffer, CL_TRUE, 0, buffer_sizes, h_data, 0, NULL, NULL);
-        // for (int i = 0; i < 30; i++)
-        // {
-        //     printf("%5f\n", h_data[i]);
-        // }
+        err |= clEnqueueReadBuffer(commandQueue[0], mhostBuffer, CL_TRUE, 0, buffer_sizes, h_data, 0, NULL, NULL);
+        for (int i = 0; i < 30; i++)
+        {
+            printf("%5f\n", h_data[i]);
+        }
         if (needWait == true)
         {
             clWaitForEvents(1, &event);

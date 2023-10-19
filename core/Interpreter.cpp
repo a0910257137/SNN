@@ -23,6 +23,7 @@ namespace SNN
         int i, j, ptr_size;
         pair<float *, float *> weight_bias;
         int dimSizes, weightBytes, biasBytes;
+        tensor->SetType(DataType_DT_FLOAT);
         if (tflite_op == tflite::BuiltinOperator_DEPTHWISE_CONV_2D)
         {
             TfLiteDepthwiseConvParams *tflite_params = (TfLiteDepthwiseConvParams *)node.builtin_data;
@@ -34,10 +35,17 @@ namespace SNN
             tensor->SetOpType(DepthwiseConv);
             tensor->SetActType(tflite_params->activation);
             tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
-            for (j = 0; j < 4; ++j)
+            for (i = 0; i < node.inputs->size; i++)
             {
-                tensor->SetInputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
             }
+
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
@@ -99,9 +107,15 @@ namespace SNN
             tensor->SetOpType(Conv2D);
             tensor->SetActType(tflite_params->activation);
             tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
-            for (j = 0; j < 4; ++j)
+            for (i = 0; i < node.inputs->size; i++)
             {
-                tensor->SetInputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
             }
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
@@ -119,7 +133,6 @@ namespace SNN
                 float *src = tflite_tensor->data.f;
                 weight_bias.first = (float *)malloc(weightBytes);
                 Tranpose(src, weight_bias.first, FILTER_FORMAT_OHWI, FILTER_FORMAT_OIHW, tflite_tensor->dims->data);
-                // exit(1);
                 tensor->SetKernelShape(0, tflite_tensor->dims->data[0]);
                 tensor->SetKernelShape(1, tflite_tensor->dims->data[3]);
                 tensor->SetKernelShape(2, tflite_tensor->dims->data[1]);
@@ -131,6 +144,152 @@ namespace SNN
                 weight_bias.second = (float *)malloc(biasBytes);
                 memcpy(weight_bias.second, tflite_tensor->data.f, biasBytes);
                 tensor->SetBiasShape(0, tflite_tensor->dims->data[0]);
+            }
+        }
+
+        else if (tflite_op == tflite::BuiltinOperator_RESIZE_NEAREST_NEIGHBOR)
+        {
+            TfLiteResizeNearestNeighborParams *tflite_params = (TfLiteResizeNearestNeighborParams *)node.builtin_data;
+            bool align_corners = tflite_params->align_corners;
+            bool half_pixel_centers = tflite_params->half_pixel_centers;
+
+            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
+            tensor->SetOpType(RESIZE_NEAREST_NEIGHBOR);
+            for (i = 0; i < node.inputs->size; i++)
+            {
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+        }
+
+        else if (tflite_op == tflite::BuiltinOperator_AVERAGE_POOL_2D)
+        {
+            TfLitePoolParams *tflite_params = (TfLitePoolParams *)node.builtin_data;
+            int stride_width = tflite_params->stride_width;
+            int stride_height = tflite_params->stride_height;
+            int filter_width = tflite_params->filter_width;
+            int filter_height = tflite_params->filter_height;
+            tensor->SetStride(0, tflite_params->stride_height);
+            tensor->SetStride(1, tflite_params->stride_width);
+            tensor->SetKernelShape(0, 0);
+            tensor->SetKernelShape(1, 0);
+            tensor->SetKernelShape(2, filter_height);
+            tensor->SetKernelShape(3, filter_width);
+            tensor->SetDilation(0, 1);
+            tensor->SetDilation(1, 1);
+            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
+            tensor->SetOpType(AVERAGE_POOL_2D);
+            tensor->SetPaddingType(tflite_params->padding);
+            tensor->SetActType(tflite_params->activation);
+
+            for (i = 0; i < node.inputs->size; i++)
+            {
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+        }
+        else if (tflite_op == tflite::BuiltinOperator_MAX_POOL_2D)
+        {
+            TfLitePoolParams *tflite_params = (TfLitePoolParams *)node.builtin_data;
+            int stride_width = tflite_params->stride_width;
+            int stride_height = tflite_params->stride_height;
+            int filter_width = tflite_params->filter_width;
+            int filter_height = tflite_params->filter_height;
+            tensor->SetStride(0, tflite_params->stride_height);
+            tensor->SetStride(1, tflite_params->stride_width);
+            tensor->SetKernelShape(0, 0);
+            tensor->SetKernelShape(1, 0);
+            tensor->SetKernelShape(2, filter_height);
+            tensor->SetKernelShape(3, filter_width);
+            tensor->SetDilation(0, 1);
+            tensor->SetDilation(1, 1);
+            tensor->SetActType(tflite_params->activation);
+            tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[0]);
+            tensor->SetOpType(MAX_POOL_2D);
+            tensor->SetPaddingType(tflite_params->padding);
+            tensor->SetActType(tflite_params->activation);
+            for (i = 0; i < node.inputs->size; i++)
+            {
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+        }
+        else if (tflite_op == tflite::BuiltinOperator_CONCATENATION)
+        {
+            TfLiteConcatenationParams *tflite_params = (TfLiteConcatenationParams *)node.builtin_data;
+            tensor->SetActType(tflite_params->activation);
+            tensor->SetConcatAxis(tflite_params->axis);
+            tensor->SetOpType(CONCATENATION);
+            for (i = 0; i < node.inputs->size; i++)
+            {
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+            }
+        }
+        else if (tflite_op == tflite::BuiltinOperator_ADD)
+        {
+            TfLiteAddParams *tflite_params = (TfLiteAddParams *)node.builtin_data;
+            tensor->SetActType(tflite_params->activation);
+            tensor->SetOpType(ADD);
+            for (i = 0; i < node.inputs->size; i++)
+            {
+                tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
+                std::vector<uint32_t> inputShape(4, 0);
+                for (j = 0; j < 4; ++j)
+                {
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                }
+                tensor->SetInputShape(inputShape);
+            }
+            tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
+            for (j = 0; j < 4; ++j)
+            {
+
+                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         tensor->SetMemoryPtr(ptr_size);
@@ -157,7 +316,7 @@ namespace SNN
             const TfLiteRegistration &registration = node_and_registration->second;
             tflite_op = static_cast<tflite::BuiltinOperator>(registration.builtin_code);
             string op_name = tflite::GetOpNameByRegistration(registration);
-            // printf("%s\n", op_name.c_str());
+            printf("%s\n", op_name.c_str());
             for (j = 0; j < node.inputs->size; j++)
                 tensor->inputIndex.push_back(node.inputs->data[i]);
             for (j = 0; j < node.outputs->size; j++)

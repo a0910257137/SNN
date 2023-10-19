@@ -32,16 +32,16 @@ namespace SNN
         mHostBuffer.second = clCreateBuffer(_mCLRuntime->GetGPUContext(), CL_MEM_READ_WRITE, length, NULL, NULL);
     }
 
-    cl_mem OpenCLBackend::ConvertNHWCBufferToImage(const Tensor *tensor, bool needwait, bool svmFlag)
+    cl_mem OpenCLBackend::ConvertNHWCBufferToImage(const std::vector<int> &shape, DataFormat data_format, bool needwait, bool svmFlag)
     {
-
         cl_int err = 0;
         cl_context &GPUcontext = _mCLRuntime->GetGPUContext();
         cl_command_queue *commandQueue = _mCLRuntime->GetCommandQue();
         cl_image_format clImageFormat;
         clImageFormat.image_channel_order = CL_RGBA;
         clImageFormat.image_channel_data_type = CL_FLOAT;
-        const std::vector<int> outputShape = TensorShapeFormat(tensor);
+        const std::vector<int> outputShape = TensorShapeFormat(shape, data_format);
+
         size_t imageWidth = outputShape[2] * UP_DIV(outputShape[3], 4), imageHeight = outputShape[0] * outputShape[1];
         cl_mem outputData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageWidth, imageHeight, 0, NULL, &err);
         uint32_t outputGlobalWorkSize[2] = {static_cast<uint32_t>(UP_DIV(outputShape[3], 4) * outputShape[2]),
@@ -80,12 +80,12 @@ namespace SNN
         return outputData;
     }
 
-    cl_mem OpenCLBackend::ConvertToDevice(const Tensor *tensor, DataFormat data_format, bool svmFlag)
+    cl_mem OpenCLBackend::ConvertToDevice(const std::vector<int> &shape, DataFormat data_format, bool svmFlag)
     {
         cl_mem outputData;
         if (data_format == DATA_FORMAT_NHWC)
         {
-            outputData = this->ConvertNHWCBufferToImage(tensor, false, svmFlag);
+            outputData = this->ConvertNHWCBufferToImage(shape, data_format, false, svmFlag);
         }
         else
         {
@@ -99,7 +99,9 @@ namespace SNN
     {
         cl_int err = 0;
         cl_command_queue *commandQueue = _mCLRuntime->GetCommandQue();
-        const std::vector<int> &inputShape = tensor->InputShape();
+        const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
+        SNN_ASSERT(inputShapes.size() == 1);
+        const std::vector<int> &inputShape = inputShapes[0];
         const std::vector<int> &outputShape = tensor->OutputShape();
         int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
         this->_AllocHostBuffer(buffer_sizes);
@@ -108,7 +110,7 @@ namespace SNN
         // err |= clEnqueueWriteBuffer(commandQueue[0], mHostBuffer.second, CL_TRUE, 0, buffer_sizes, pseudoIputData, 0, NULL, NULL);
         // oclCheckError(err, CL_SUCCESS);
         DataFormat data_format = tensor->data_format;
-        cl_mem outputData = this->ConvertToDevice(tensor, data_format, false);
+        cl_mem outputData = this->ConvertToDevice(inputShapes[0], data_format, false);
         err |= clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
         tensor->SetDeviceInputData(outputData);

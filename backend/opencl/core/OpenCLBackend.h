@@ -20,9 +20,9 @@ namespace SNN
         OpenCLBackend(const OpenCLBackend &) = delete;
         OpenCLBackend &operator=(const OpenCLBackend &) = delete;
         OpenCLRuntime *CLRuntime() const { return _mCLRuntime; };
-
-        cl_mem ConvertToDevice(const Tensor *srcTensor, DataFormat data_format, bool svmFlag);
-        cl_mem ConvertNHWCBufferToImage(const Tensor *tensor, bool needwait, bool svmFlag);
+        
+        cl_mem ConvertToDevice(const std::vector<int> &shape, DataFormat data_format, bool svmFlag);
+        cl_mem ConvertNHWCBufferToImage(const std::vector<int> &shape, DataFormat data_format, bool needwait, bool svmFlag);
         void CopyToDevice(Tensor *srcTensor);
         mutable std::pair<int, cl_mem> mHostBuffer;
 

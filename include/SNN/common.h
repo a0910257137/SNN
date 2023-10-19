@@ -43,7 +43,18 @@ typedef enum
     Conv2D = 1,
     Concat = 2,
     Relu = 3,
-    AveragePooling2D = 4,
-    MaxPooling2D = 5
+    AVERAGE_POOL_2D = 4,
+    MAX_POOL_2D = 5,
+    RESIZE_NEAREST_NEIGHBOR = 6,
+    CONCATENATION = 7,
+    ADD = 8,
+    SUB = 9,
+    MUL = 10,
+    REALDIV = 11,
+    MINIMUM = 12,
+    MAXIMUM = 13,
+    GREATER = 14,
+    LESS = 15,
+
 } OpTypes;
 #endif

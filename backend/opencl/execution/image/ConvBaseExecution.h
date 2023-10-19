@@ -13,4 +13,4 @@ namespace SNN
         //     cl_mem mBias;
     };
 } // SNN
-#endif // DEPTHWISECONVEXECUTION_h
+#endif // CONVBASEEXECUTION_H

@@ -59,7 +59,6 @@ namespace SNN
                 printf("ERROR: build error !! \n");
             i++;
         }
-
         return status;
     }
 

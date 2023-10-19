@@ -16,7 +16,10 @@ int main(int argc, char **argv)
 {
     bool status;
     BackendConfig cfg;
-    string path = "/aidata/anders/data_collection/okay/WF/archives/test/FP32.tflite";
+    // string path = "/aidata/anders/data_collection/okay/WF/archives/test/FP32.tflite";
+    // string path = "/aidata/anders/data_collection/okay/WF/archives/test/resize/resize_add.tflite";
+    // string path = "/aidata/anders/data_collection/okay/WF/archives/test/test_data/concat/concat.tflite";
+    string path = "/aidata/anders/data_collection/okay/WF/archives/test/test_data/addn/addn.tflite";
     SNN::Pipeline pipeline(path, cfg);
     status = pipeline.GetSNNGraph();
     status = pipeline.BuildSNNGraph();

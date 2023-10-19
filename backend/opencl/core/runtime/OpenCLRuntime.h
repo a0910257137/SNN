@@ -45,7 +45,6 @@ namespace SNN
     public:
         OpenCLRuntime();
         ~OpenCLRuntime();
-
         OpenCLRuntime(const OpenCLRuntime &) = delete;
         OpenCLRuntime &operator=(const OpenCLRuntime &) = delete;
         cl_kernel BuildKernel(const std::string &programName, const std::string &kernelName, const std::set<std::string> &buildOptions);
@@ -53,9 +52,32 @@ namespace SNN
         cl_uint GetNumDevice() { return _num_devices; };
         cl_command_queue *GetCommandQue() { return _commandQueue; };
         cl_context &GetGPUContext() { return _GPUContext; };
+
+        GpuType GetGpuType()
+        {
+            return mGpuType;
+        }
+        float GetCostTime(const cl_event *event);
+
+        cl_int err;
+
+    public:
+        size_t *getMaxWorkItemSizes();
+        bool isSupportedFP16() const;
+        bool isWeightCpuTransHalf() const;
+        bool isDeviceSupportedFP16() const;
         uint64_t maxAllocSize() const;
         uint64_t getMaxWorkGroupSize(const cl_kernel &kernel);
+        uint32_t deviceComputeUnits() const;
+
+    public:
         std::pair<std::vector<size_t>, float> localWS2DDefault(const std::vector<size_t> &gws,
+                                                               const size_t maxWorkGroupSize,
+                                                               OpenCLRuntime *runtime,
+                                                               const std::string &kernelName,
+                                                               const cl_kernel &mKernel);
+
+        std::pair<std::vector<size_t>, float> localWS3DDefault(const std::vector<size_t> &gws,
                                                                const size_t maxWorkGroupSize,
                                                                OpenCLRuntime *runtime,
                                                                const std::string &kernelName,
@@ -66,16 +88,6 @@ namespace SNN
         {
             return mTuneLevel;
         }
-        GpuType GetGpuType()
-        {
-            return mGpuType;
-        }
-        float GetCostTime(const cl_event *event);
-        size_t *getMaxWorkItemSizes();
-        bool isSupportedFP16() const;
-        bool isWeightCpuTransHalf() const;
-        bool isDeviceSupportedFP16() const;
-        cl_int err;
 
     protected:
         cl_device_id *_device;
@@ -100,7 +112,9 @@ namespace SNN
         GpuType mGpuType;
         float mCLVersion = 3.0f;
         CLTuneLevel mTuneLevel = Fast;
-
+        uint64_t mGPUGlobalMemeryCacheSize;
+        uint32_t mGPUComputeUnits;
+        uint32_t mMaxFreq;
         std::map<std::pair<std::string, std::vector<size_t>>, std::pair<std::vector<size_t>, float_t>> mTunedLws;
     };
 }

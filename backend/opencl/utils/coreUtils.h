@@ -10,6 +10,6 @@ namespace SNN
 {
     void getImageShape(const std::vector<int> &shape, const OpenCLBufferFormat type, size_t *imageShape);
     void CopyBufferToImage(OpenCLRuntime *runtime, const cl_mem &buffer, const cl_mem &image, int *w, int *h, cl_int &err);
-    std::vector<int> TensorShapeFormat(const Tensor *input);
+    std::vector<int> TensorShapeFormat(const std::vector<int> &shape, DataFormat data_format);
 }
 #endif // UTILS_H

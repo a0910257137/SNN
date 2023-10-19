@@ -60,9 +60,11 @@ namespace SNN
 
     bool ConvExecution::onResize(std::shared_ptr<Tensor> tensor)
     {
-        const std::vector<int> &inputShape = tensor->InputShape();
-        const std::vector<int> &outputShape = tensor->OutputShape();
+        const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
+        SNN_ASSERT(inputShapes.size() == 1);
+        const std::vector<int> &inputShape = inputShapes[0];
 
+        const std::vector<int> &outputShape = tensor->OutputShape();
         const std::vector<int> &kernelVectShape = tensor->KernelShape();
         const int inputHeight = inputShape.at(1);
         const int inputWidth = inputShape.at(2);
@@ -98,13 +100,13 @@ namespace SNN
                 uint32_t idx = 0;
                 if (mUseLocalMem)
                 {
-                    mGlobalWorkSize = {
+                    mGWS = {
                         static_cast<size_t>(UP_DIV(outputShape.at(3), 4)), static_cast<size_t>(UP_DIV(outputShape.at(2), 4)), static_cast<size_t>(outputShape.at(0) * outputShape.at(1))};
                     std::vector<size_t> lws{UNIT, UNIT, 1};
-                    mLocalWorkSize = lws;
-                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[0]);
-                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[1]);
-                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[2]);
+                    mLWS = lws;
+                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
+                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
+                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[2]);
                     err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &inputCLData);
                     err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mFilter);
                     err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mBias);
@@ -115,11 +117,11 @@ namespace SNN
                 }
                 else
                 {
-                    mGlobalWorkSize = {static_cast<size_t>(UP_DIV(outputShape.at(3), 4) * UP_DIV(outputShape.at(2), 4)),
-                                       static_cast<size_t>(outputShape.at(0) * outputShape.at(1))};
+                    mGWS = {static_cast<size_t>(UP_DIV(outputShape.at(3), 4) * UP_DIV(outputShape.at(2), 4)),
+                            static_cast<size_t>(outputShape.at(0) * outputShape.at(1))};
 
-                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[0]);
-                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[1]);
+                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
+                    err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
                     size_t width4 = UP_DIV(outputShape[2], 4);
                     err |= clSetKernelArg(mKernel, idx++, sizeof(size_t), &width4);
                     err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mKernelBuffer);
@@ -133,7 +135,7 @@ namespace SNN
             }
             else
             {
-                mGlobalWorkSize = {
+                mGWS = {
                     static_cast<size_t>(UP_DIV(outputShape.at(3), 4) * static_cast<size_t>(UP_DIV(outputShape.at(2), 4))),
                     static_cast<size_t>(outputShape.at(0) * outputShape.at(1))};
                 int imageShape[2] = {UP_DIV(outputShape.at(3), 4) * outputShape.at(2), outputShape.at(0) * outputShape.at(1)};
@@ -141,8 +143,8 @@ namespace SNN
                 int inputImageShape[2] = {inputHeight, inputWidth};
                 int outputImageShape[2] = {outputShape.at(1), outputShape.at(2)};
                 outputCLData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
-                err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[0]);
-                err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[1]);
+                err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
+                err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
                 err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &inputCLData);
                 err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mFilter);
                 err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mBias);
@@ -155,7 +157,7 @@ namespace SNN
                 err |= clSetKernelArg(mKernel, idx++, sizeof(int), &width4);
                 oclCheckError(err, CL_SUCCESS);
                 std::string kernelName = "conv_2d_1x1";
-                mLocalWorkSize = mOpenCLRuntime->localWS2DDefault(mGlobalWorkSize, mMaxWorkGroupSize, mOpenCLRuntime, kernelName, mKernel).first;
+                mLWS = mOpenCLRuntime->localWS2DDefault(mGWS, mMaxWorkGroupSize, mOpenCLRuntime, kernelName, mKernel).first;
                 err |= clFinish(commandQueue[0]);
                 // Testing...
                 // int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
@@ -173,8 +175,8 @@ namespace SNN
                 // tensor->SetDeviceInputData(intputImageData);
                 // DataFormat data_format = tensor->data_format;
                 // idx = 0;
-                // err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[0]);
-                // err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGlobalWorkSize[1]);
+                // err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
+                // err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
                 // err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &intputImageData);
                 // err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mFilter);
                 // err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mBias);
@@ -185,8 +187,8 @@ namespace SNN
                 // err |= clSetKernelArg(mKernel, idx++, sizeof(strideShape), &strideShape);
                 // err |= clSetKernelArg(mKernel, idx++, sizeof(int), &width4);
                 // oclCheckError(err, CL_SUCCESS);
-                // const size_t internalGlobalWS[2] = {mGlobalWorkSize[0], mGlobalWorkSize[1]};
-                // const size_t lws[2] = {mLocalWorkSize[0], mLocalWorkSize[1]};
+                // const size_t internalGlobalWS[2] = {mGWS[0], mGWS[1]};
+                // const size_t lws[2] = {mLWS[0], mLWS[1]};
                 // // const size_t lws[2] = {5, 5};
                 // err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, internalGlobalWS, lws, 0, NULL, NULL);
                 // oclCheckError(err, CL_SUCCESS);

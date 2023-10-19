@@ -67,30 +67,30 @@ namespace SNN
         err |= clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
     }
-    std::vector<int> TensorShapeFormat(const Tensor *input)
+    std::vector<int> TensorShapeFormat(const std::vector<int> &shape, DataFormat data_format)
     {
         int iN, iH, iW, iC;
-        const std::vector<int> &inputShape = input->InputShape();
-        if (input->data_format == DATA_FORMAT_NHWC)
+        int dimensions = shape.size();
+        if (data_format == DATA_FORMAT_NHWC)
         {
-            iN = (0 < inputShape[0]) ? inputShape[0] : 1;
-            iH = (0 < inputShape[1]) ? inputShape[1] : 1;
-            iW = (0 < inputShape[2]) ? inputShape[2] : 1;
-            iC = (0 < inputShape[3]) ? inputShape[3] : 1;
+            iN = (0 < shape[0]) ? shape[0] : 1;
+            iH = (0 < shape[1]) ? shape[1] : 1;
+            iW = (0 < shape[2]) ? shape[2] : 1;
+            iC = (0 < shape[3]) ? shape[3] : 1;
         }
-        if (input->buffer().dimensions == 2)
+        if (dimensions == 2)
         {
-            iN = inputShape[0];
+            iN = shape[0];
             iH = 1;
             iW = 1;
-            iC = inputShape[1];
+            iC = shape[1];
         }
-        if (input->buffer().dimensions == 1)
+        if (dimensions == 1)
         {
             iN = 1;
             iH = 1;
             iW = 1;
-            iC = inputShape[0];
+            iC = shape[0];
         }
         std::vector<int> shape_vec{iN, iH, iW, iC};
 

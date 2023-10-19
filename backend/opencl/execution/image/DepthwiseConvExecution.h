@@ -10,11 +10,11 @@ namespace SNN
     {
     public:
         explicit DepthwiseConvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
-        ~DepthwiseConvExecution();
+        virtual ~DepthwiseConvExecution();
         DepthwiseConvExecution(const DepthwiseConvExecution &) = delete;
         DepthwiseConvExecution &operator=(const DepthwiseConvExecution &) = delete;
-        bool onResize(std::shared_ptr<Tensor> tensor);
-        bool onExecute();
+        virtual bool onResize(std::shared_ptr<Tensor> tensor);
+        virtual bool onExecute();
 
     private:
         OpenCLBackend *mbackend;
