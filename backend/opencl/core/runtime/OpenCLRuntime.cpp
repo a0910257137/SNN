@@ -41,7 +41,6 @@ namespace SNN
         printf("INFO: ================Finish initialization of OpenCL device================\n");
         mGpuType = OTHER;
         // get gpu information
-
         clGetDeviceInfo(this->_device[0], CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, sizeof(uint64_t), &mGPUGlobalMemeryCacheSize, 0);
         clGetDeviceInfo(this->_device[0], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(uint32_t), &mGPUComputeUnits, 0);
         clGetDeviceInfo(this->_device[0], CL_DEVICE_MAX_CLOCK_FREQUENCY, sizeof(uint32_t), &mMaxFreq, 0);
@@ -50,8 +49,8 @@ namespace SNN
     }
     OpenCLRuntime::~OpenCLRuntime()
     {
-        mProgramMaps.clear();
-        mProgramDirty.clear();
+        mSourceMaps.clear();
+        mBuiltProgramMaps.clear();
     }
     bool OpenCLRuntime::BuildProgramMaps()
     {
@@ -70,18 +69,18 @@ namespace SNN
                 if (file_name == b || file_name == bb)
                     continue;
                 source_path = shrFindFilePath(ent->d_name);
-                // std::cout << source_path << std::endl;
                 oclCheckError(source_path != NULL, shrTRUE);
                 source = oclLoadProgSource(source_path, "", &program_length);
-                auto programRaw = clCreateProgramWithSource(this->_GPUContext, 1, (const char **)&source, &program_length, &err);
-                oclCheckError(err, CL_SUCCESS);
-                if (!programRaw)
-                {
-                    printf("Can't load %s  load program\n", source_path);
-                    return false;
-                }
-                mProgramMaps.insert(std::pair<std::string, cl_program>(file_name, programRaw));
-                mProgramDirty.insert(std::pair<std::string, bool>(file_name, false));
+                mSourceMaps[file_name] = std::make_tuple(source, program_length);
+                // mSourceMaps.insert(std::make_pair(file_name, source));
+                // auto programRaw = clCreateProgramWithSource(this->_GPUContext, 1, (const char **)&source, &program_length, &err);
+                // oclCheckError(err, CL_SUCCESS);
+                // if (!programRaw)
+                // {
+                //     printf("Can't load %s  load program\n", source_path);
+                //     return false;
+                // }
+                // mProgramSourceMaps.insert(std::make_pair(std::make_tuple(file_name, ""), std::make_pair(programRaw, programRaw)));
             }
             closedir(dir);
         }
@@ -93,23 +92,22 @@ namespace SNN
     }
     bool OpenCLRuntime::LoadProgram(const std::string &cl_name, cl_program &program)
     {
-        auto buildProgramInter = mProgramMaps.find(cl_name);
-        auto isProgramDirty = mProgramDirty.find(cl_name);
+        // auto buildProgramInter = mProgramMaps.find(cl_name);
 
-        if (buildProgramInter != mProgramMaps.end())
-        {
-            program = buildProgramInter->second;
-            isProgramDirty->second = true;
-            return true;
-        }
-        else
-        {
-            printf("ERROR: Can't load program %s source \n", cl_name.c_str());
-            return false;
-        }
+        // if (buildProgramInter != mProgramMaps.end())
+        // {
+        //     program = buildProgramInter->second;
+        //     return true;
+        // }
+        // else
+        // {
+        //     printf("ERROR: Can't load program %s source \n", cl_name.c_str());
+        //     return false;
+        // }
     }
     cl_kernel OpenCLRuntime::BuildKernel(const std::string &programName, const std::string &kernelName, const std::set<std::string> &buildOptions)
     {
+
         std::string buildOptionsStr;
         if (mIsSupportedFP16)
             buildOptionsStr = "-DFLOAT=half -DFLOAT2=half2 -DFLOAT4=half4 -DFLOAT8=half8 -DFLOAT16=half16 -DRI_F=read_imageh -DWI_F=write_imageh -DCONVERT_FLOAT4=convert_half4 -DMNN_SUPPORT_FP16";
@@ -121,20 +119,39 @@ namespace SNN
             buildOptionsStr += " -DSET_ATTRIBUTE=false";
         for (auto &option : buildOptions)
             buildOptionsStr += " " + option;
-
         buildOptionsStr += mDefaultBuildParams;
-        std::string key = programName + ".cl";
+
         cl_program program;
-        bool isDirty = this->mProgramDirty.find(key)->second;
-        bool status = LoadProgram(key, program);
-        oclCheckError(status, true);
-        if (isDirty == false)
+        std::tuple<std::string, std::string> key;
+        key = std::make_pair(programName + "_" + kernelName, buildOptionsStr);
+        auto builtProgram = mBuiltProgramMaps.find(key);
+        cl_kernel kernel = NULL;
+        err = CL_SUCCESS;
+        char *source;
+        if (builtProgram != mBuiltProgramMaps.end())
         {
+            program = builtProgram->second;
+        }
+        else
+        {
+            std::tuple<char *, size_t> source_infos = mSourceMaps[programName + ".cl"];
+            source = std::get<0>(source_infos);
+            size_t length = std::get<1>(source_infos);
+            program = clCreateProgramWithSource(this->_GPUContext, 1, (const char **)&source, &length, &err);
+            oclCheckError(err, CL_SUCCESS);
+            if (!program)
+            {
+                printf("Can't load %s  load program\n", programName.c_str());
+                exit(1);
+            }
             err = clBuildProgram(program, this->_num_devices, this->_device, buildOptionsStr.c_str(), NULL, NULL);
             oclCheckError(err, CL_SUCCESS);
+            mBuiltProgramMaps.emplace(std::make_pair(key, program));
         }
-        cl_kernel kernel = clCreateKernel(program, kernelName.c_str(), &err);
+
+        kernel = clCreateKernel(program, kernelName.c_str(), &err);
         oclCheckError(err, CL_SUCCESS);
+
         return kernel;
     }
 
@@ -176,8 +193,9 @@ namespace SNN
     }
     float OpenCLRuntime::GetCostTime(const cl_event *event)
     {
-
         cl_int err = clWaitForEvents(1, event);
+        // if (err != 0)
+        //     return INFINITY;
         oclCheckError(err, CL_SUCCESS);
         cl_ulong time_start, time_end;
         float total_time;
@@ -208,8 +226,8 @@ namespace SNN
         // {
         //     printf("max_work_item_size_of_work_group_dim %zu=%zu\n", i, maxWorkItemSizes[i]);
         // }
+        // exit(1);
         err = 0;
-
         if (runtime->GetCLTuneLevel() == Fast)
         {
             while (lws[1] <= gws[1] && lws[1] <= 6)
@@ -217,25 +235,31 @@ namespace SNN
                 lws[0] = 1;
                 while (lws[0] <= gws[0] && lws[0] <= 6)
                 {
-                    if (lws[0] <= maxWorkItemSizes[0] && lws[1] <= maxWorkItemSizes[1] && lws[0] * lws[1] <= maxWorkGroupSize)
+                    // don't know wy local size x ==3 will encounter error !?
+
+                    if ((lws[0] <= maxWorkItemSizes[0]) && (lws[1] <= maxWorkItemSizes[1]) && (lws[0] * lws[1] <= maxWorkGroupSize))
                     {
-
-                        cl_event event;
+                        // (lws[0] != 3)
+                        cl_event event = NULL;
                         size_t internalGlobalWS[2] = {1, 1};
-                        for (size_t i = 0; i < 2; ++i)
+                        for (int i = 0; i < 2; ++i)
                         {
-                            internalGlobalWS[i] = ROUND_UP(gws[i], MAX((size_t)1, lws[i]));
+                            internalGlobalWS[i] = ROUND_UP(gws[i], MAX((int)1, lws[i]));
                         }
-                        // const size_t lws[2] = {16, MAX((unsigned int)1, maxWorkGroupSize / 16)};
-                        err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, internalGlobalWS, lws, 0, NULL, &event);
-                        oclCheckError(err, CL_SUCCESS);
-
-                        if (err != CL_SUCCESS)
-                        {
-                            printf("lws tune result errors %s", kernelName.c_str());
-                        }
+                        // if (kernelName == "conv_2d_c4h4w1" && (lws[0] == 3))
+                        //     break;
+                        // if ((internalGlobalWS[0] % 2 == 1) && (lws[0] % 2 == 1))
+                        //     break;
+                        // internalGlobalWS[0] = gws[0];
+                        // internalGlobalWS[1] = gws[1];
+                        // std::cout << "Global X: " << internalGlobalWS[0] << std::endl;
+                        // std::cout << "Global Y: " << internalGlobalWS[1] << std::endl;
+                        // std::cout << "Local X: " << lws[0] << std::endl;
+                        // std::cout << "Local Y: " << lws[1] << std::endl;
+                        // if ((gws[0] % lws[0] != 0) || (gws[1] % lws[1] != 0))
+                        //     break;
+                        err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, internalGlobalWS, lws, 0, nullptr, &event);
                         float cost_time = (float)this->GetCostTime(&event);
-                        std::cout << cost_time << std::endl;
                         if (cost_time < min_cost)
                         {
                             min_cost = cost_time;
@@ -246,15 +270,16 @@ namespace SNN
                     do
                     {
                         lws[0]++;
-                    } while (((2 * gws[0]) % lws[0] > 1) && (lws[0] & (lws[0] - 1)) != 0 && (lws[0] <= gws[0]) && (lws[0] <= 6));
+                    } while (((2 * gws[0]) % lws[0] > 1) && (lws[0] & (lws[0] - 1)) != 0 && (lws[0] <= gws[0]) && (lws[0] <= 6)); // divisible powOfTwo lessThanSix
                 }
-                // float *a = (float *)malloc(320 * 320 * 24 * sizeof(float));
                 do
                 {
                     lws[1]++;
                 } while (((2 * gws[1]) % lws[1] > 1) && (lws[1] & (lws[1] - 1)) != 0 && (lws[1] <= gws[1]) && (lws[1] <= 6)); // divisible powOfTwo lessThanSix
             }
+            err |= clFinish(commandQueue[0]);
         }
+
         else if (runtime->GetCLTuneLevel() == None)
         {
             // define not tune method to choose lws
@@ -287,8 +312,8 @@ namespace SNN
         {
             tunedLws.insert(std::make_pair(info, std::make_pair(lws_prefer, min_cost)));
         }
-        // printf("INFO: Find Best local work item for x %lu \n", lws[0]);
-        // printf("INFO: Find Best local work item for y %lu \n", lws[1]);
+        // printf("INFO: Find Best local work item for x %lu \n", lws_prefer[0]);
+        // printf("INFO: Find Best local work item for y %lu \n", lws_prefer[1]);
         return std::make_pair(lws_prefer, min_cost);
     }
     std::pair<std::vector<size_t>, float_t> OpenCLRuntime::localWS3DDefault(const std::vector<size_t> &gws,
@@ -300,7 +325,6 @@ namespace SNN
         SNN_ASSERT(gws.size() == 3);
 
         auto maxWorkItemSizes = runtime->getMaxWorkItemSizes();
-
         auto &tunedLws = runtime->TunedLwsMap();
         std::pair<std::string, std::vector<size_t>> info = std::make_pair(kernelName, gws);
         if (tunedLws.find(info) != tunedLws.end())
@@ -322,7 +346,7 @@ namespace SNN
                     lws[0] = 1;
                     while (lws[0] <= gws[0] && lws[0] <= 6)
                     {
-                        if (lws[0] <= maxWorkItemSizes[0] && lws[1] <= maxWorkItemSizes[1] && lws[2] <= maxWorkItemSizes[2] && lws[0] * lws[1] * lws[2] <= maxWorkGroupSize)
+                        if ((lws[0] <= maxWorkItemSizes[0]) && (lws[1] <= maxWorkItemSizes[1]) && (lws[2] <= maxWorkItemSizes[2]) && (lws[0] * lws[1] * lws[2] <= maxWorkGroupSize))
                         {
                             cl_event event;
                             size_t internalGlobalWS[3] = {1, 1, 1};
@@ -338,7 +362,6 @@ namespace SNN
                             {
                                 printf("lws tune res %s\n", kernelName.c_str());
                             }
-
                             float cost_time = (float)this->GetCostTime(&event);
                             // std::cout << cost_time << std::endl;
                             if (cost_time < min_cost)
@@ -403,7 +426,66 @@ namespace SNN
         // printf("INFO: Find Best local work item for y %lu \n", lws[1]);
         return std::make_pair(lws_prefer, min_cost);
     }
+    void OpenCLRuntime::RunKernel2D(const cl_kernel &kernel, const std::vector<size_t> &gws, const std::vector<size_t> &lws,
+                                    OpenCLRuntime *runtime, cl_event *eventPtr)
+    {
+        SNN_ASSERT(lws.size() >= 2);
+        size_t internalGlobalWS[2] = {};
+        cl_command_queue *commandQueue = runtime->GetCommandQue();
+        for (size_t i = 0; i < 2; ++i)
+        {
+            internalGlobalWS[i] = ROUND_UP(gws[i], MAX((uint32_t)1, lws[i]));
+        }
+        err = CL_SUCCESS;
+        if (lws[0] == 0 || lws[1] == 0)
+        {
+            err |= clEnqueueNDRangeKernel(commandQueue[0], kernel, 2, NULL, internalGlobalWS, NULL, 0, NULL, NULL);
+        }
+        else
+        {
+            size_t internalLocalWS[2] = {lws[0], lws[1]};
+            err |= clEnqueueNDRangeKernel(commandQueue[0], kernel, 2, NULL, internalGlobalWS, internalLocalWS, 0, NULL, NULL);
+        }
+        oclCheckError(err, CL_SUCCESS);
+        unsigned int num_flush = runtime->GetQueueNum();
+        if (num_flush % 10 == 0)
+        {
+            clFlush(commandQueue[0]);
+        }
+    }
+    void OpenCLRuntime::RunKernel3D(const cl_kernel &kernel, const std::vector<size_t> &gws, const std::vector<size_t> &lws,
+                                    OpenCLRuntime *runtime, cl_event *eventPtr)
+    {
 
+        SNN_ASSERT(lws.size() >= 3);
+        err = CL_SUCCESS;
+        size_t internalGlobalWS[3] = {};
+        for (size_t i = 0; i < 3; ++i)
+        {
+            internalGlobalWS[i] = ROUND_UP(gws[i], MAX((uint32_t)1, lws[i]));
+        }
+        cl_command_queue *commandQueue = runtime->GetCommandQue();
+        if (lws[0] == 0 || lws[1] == 0 || lws[3] == 0)
+        {
+            err |= clEnqueueNDRangeKernel(commandQueue[0], kernel, 2, NULL, internalGlobalWS, NULL, 0, NULL, NULL);
+        }
+        else
+        {
+            size_t internalLocalWS[3] = {lws[0], lws[1], lws[2]};
+            err |= clEnqueueNDRangeKernel(commandQueue[0], kernel, 3, NULL, internalGlobalWS, internalLocalWS, 0, NULL, NULL);
+        }
+        oclCheckError(err, CL_SUCCESS);
+        unsigned int num_flush = runtime->GetQueueNum();
+        if (num_flush % 10 == 0)
+        {
+            clFlush(commandQueue[0]);
+        }
+    }
+    unsigned int OpenCLRuntime::GetQueueNum()
+    {
+        mQueueCount++;
+        return mQueueCount;
+    }
     uint64_t OpenCLRuntime::maxAllocSize() const
     {
         return mMaxMemAllocSize;

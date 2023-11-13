@@ -9,7 +9,7 @@ namespace SNN
         AddN(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
         virtual ~AddN() = default;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
-        virtual bool onExecute();
+        virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs) override;
 
     private:
         OpenCLBackend *mOpenCLBackend;

@@ -1,23 +1,20 @@
-#ifndef POOLEXECUTION_H
-#define POOLEXECUTION_H
+#ifndef DECONVEXECUTION_H
+#define DECONVEXECUTION_H
 #include "Execution.h"
+#include "backend/opencl/core/ImageBufferConverter.h"
 namespace SNN
 {
 
-    class PoolExecution : public Execution
+    class DeconvExecution : public Execution
     {
     public:
-        PoolExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
-        virtual ~PoolExecution() = default;
+        DeconvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
+        virtual ~DeconvExecution() = default;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
-        virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
-        std::vector<size_t> PoolLocalWS(const std::vector<size_t> &gws, const size_t maxWorkGroupSize);
+        virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs) override;
 
     private:
         OpenCLBackend *mOpenCLBackend;
-
-    private:
-        cl_mem *inputCLData, *outputCLData;
 
     private:
         std::vector<size_t> mGWS{1, 1, 1};
@@ -30,6 +27,7 @@ namespace SNN
         uint32_t mMaxWorkGroupSize;
         std::shared_ptr<ConvolutionCommon> mConvCommon;
     };
+
 } // namespace SNN
 
-#endif // POOLEXECUTION_H
+#endif // DECONVEXECUTION_H

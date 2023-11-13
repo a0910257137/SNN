@@ -57,5 +57,6 @@ target_link_libraries(infer.exe
                         ${OpenCV_LIBS}
                         ${Threads_LIBS}
                         tensorflow-lite
-                        CORE_LIBS)
+                        CORE_LIBS
+                        UTIL_LIBS)
                         

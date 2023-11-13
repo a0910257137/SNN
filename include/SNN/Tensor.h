@@ -118,7 +118,6 @@ namespace SNN
         /**
          * Get member functions
          **/
-
         inline uint32_t batch(int index) const
         {
             return mBuffer.inputShapes[index][0];
@@ -167,14 +166,15 @@ namespace SNN
         {
             return mBuffer.axis;
         }
-        inline cl_mem GetDeviceInputData() const
+        inline cl_mem *GetDeviceInputData()
         {
-            return mBuffer.mDeviceBuffer.inputData;
+            return &mBuffer.mDeviceBuffer.inputData;
         }
-        inline cl_mem GetDeviceOutputData() const
+        inline cl_mem *GetDeviceOutputData()
         {
-            return mBuffer.mDeviceBuffer.outputData;
+            return &mBuffer.mDeviceBuffer.outputData;
         }
+
         inline cl_mem GetDeviceFilter() const
         {
             return mBuffer.mDeviceBuffer.mFilter;
@@ -188,9 +188,9 @@ namespace SNN
             return mainMemory;
         }
 
-        inline std::string GetName() const
+        inline std::string GetOpName() const
         {
-            return name;
+            return this->name;
         }
         inline const std::vector<uint8_t> &GetMemoryPtrIndex() const
         {
@@ -259,6 +259,10 @@ namespace SNN
         {
             mBuffer.mDeviceBuffer.inputData = data;
         }
+        inline void SetDeviceOutputData(cl_mem &data)
+        {
+            mBuffer.mDeviceBuffer.outputData = data;
+        }
         inline void SetDeviceFilter(cl_mem &data)
         {
             mBuffer.mDeviceBuffer.mFilter = data;
@@ -267,9 +271,9 @@ namespace SNN
         {
             mBuffer.mDeviceBuffer.mBias = data;
         }
-        inline void SetDeviceOutputData(cl_mem &data)
+        inline void SetOpName(std::string &name)
         {
-            mBuffer.mDeviceBuffer.outputData = data;
+            this->name = name;
         }
         void SetMainMemory(std::shared_ptr<std::vector<std::pair<float *, float *>>> memory)
         {

@@ -10,8 +10,9 @@ namespace SNN
         const std::vector<int> &kernelShape = tensor->KernelShape();
         mStrides[0] = tensor->stride(0);
         mStrides[1] = tensor->stride(1);
-        mKernels[0] = kernelShape[2];
-        mKernels[1] = kernelShape[3];
+        mKernels[0] = kernelShape.at(2);
+        mKernels[1] = kernelShape.at(3);
+
         auto padding = mConvCommon->GetPadding(tensor);
         mPaddings[0] = padding.first * 2;
         mPaddings[1] = padding.second * 2;
@@ -47,13 +48,12 @@ namespace SNN
             mPaddings[1] = padNeedWidth;
         }
         SNN_ASSERT(mDilations[0] == 1 && mDilations[1] == 1);
-        const int batch = outputShape[0];
-
-        const int outputHeight = outputShape[1];
-        const int outputWidth = outputShape[2];
-        const int channels = outputShape[3];
-        const int inputHeight = inputShape[1];
-        const int inputWidth = inputShape[2];
+        const int batch = outputShape.at(0);
+        const int outputHeight = outputShape.at(1);
+        const int outputWidth = outputShape.at(2);
+        const int channels = outputShape.at(3);
+        const int inputHeight = inputShape.at(1);
+        const int inputWidth = inputShape.at(2);
         int channelBlocks = UP_DIV(channels, 4);
         mGWS = {
             static_cast<size_t>(channelBlocks),
@@ -69,26 +69,27 @@ namespace SNN
         uint32_t idx = 0;
         cl_int err;
         this->mOpenCLBackend->CopyToDevice(tensor.get());
-        const cl_mem &inputCLData = tensor->GetDeviceInputData();
-        cl_context &GPUcontext = mOpenCLRuntime->GetGPUContext();
-        cl_command_queue *commandQueue = mOpenCLRuntime->GetCommandQue();
-        cl_image_format clImageFormat;
-        clImageFormat.image_channel_order = CL_RGBA;
-        clImageFormat.image_channel_data_type = CL_FLOAT;
+        this->mOpenCLBackend->CopyToDevice(tensor.get());
+        this->inputCLData = tensor->GetDeviceInputData();
         int imageShape[2] = {UP_DIV(outputShape.at(3), 4) * outputShape.at(2), outputShape.at(0) * outputShape.at(1)};
-        cl_mem outputCLData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
-        oclCheckError(err, CL_SUCCESS);
+        cl_mem outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        tensor->SetDeviceOutputData(outputCLData);
+        this->outputCLData = tensor->GetDeviceOutputData();
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[2]);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &inputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData);
         err |= clSetKernelArg(mKernel, idx++, sizeof(inputImageShape), inputImageShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &outputHeight);
         err |= clSetKernelArg(mKernel, idx++, sizeof(paddingShape), paddingShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(strideShape), strideShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(kernelShape), kernelShape);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &outputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->outputCLData);
         oclCheckError(err, CL_SUCCESS);
+        std::string kernelName = "pooling";
+        mLWS = mOpenCLRuntime->localWS3DDefault(mGWS, mMaxWorkGroupSize, mOpenCLRuntime, kernelName, mKernel).first;
+        err |= clFinish(commandQueue[0]);
+        // exit(1);
         // Testing ..
         // int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
         // float *inpu_data = (float *)malloc(buffer_sizes);
@@ -139,9 +140,6 @@ namespace SNN
         // exit(1);
     }
 
-    bool PoolExecution::onExecute()
-    {
-    }
     std::vector<size_t> PoolExecution::PoolLocalWS(const std::vector<size_t> &gws, const size_t maxWorkGroupSize)
     {
         std::vector<size_t> lws(3, 0);
@@ -173,5 +171,24 @@ namespace SNN
             totalSizeNow *= lws[i];
         }
         return lws;
+    }
+    bool PoolExecution::onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
+    {
+        int numInput = input_tensors.size();
+        SNN_ASSERT(numInput == 1);
+        std::shared_ptr<Tensor> input_tensor = input_tensors[0];
+        std::shared_ptr<Tensor> output_tensor = output_tensors[0];
+        this->inputCLData = input_tensor->GetDeviceOutputData();
+        SNN_ASSERT(inputCLData != NULL);
+        cl_int err = CL_SUCCESS;
+        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), this->inputCLData);
+        mOpenCLRuntime->RunKernel3D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
+        oclCheckError(err, CL_SUCCESS);
+        output_tensor->SetDeviceOutputData(*this->outputCLData);
+        output_tensor->SetDeviceInputData(*this->inputCLData);
+        bool status = true;
+        if (err != CL_SUCCESS)
+            return false;
+        return status;
     }
 } // namespace SNN

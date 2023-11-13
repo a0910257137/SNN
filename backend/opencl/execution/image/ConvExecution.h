@@ -1,5 +1,6 @@
 #ifndef CONVEXECUTION_H
 #define COVEXECUTION_H
+
 #include "ConvBaseExecution.h"
 #include "Execution.h"
 #include "backend/opencl/core/OpenCLBackend.h"
@@ -12,14 +13,17 @@ namespace SNN
     {
     public:
         explicit ConvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
-        virtual ~ConvExecution();
+        virtual ~ConvExecution() = default;
         ConvExecution(const ConvExecution &) = delete;
         ConvExecution &operator=(const ConvExecution &) = delete;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
-        virtual bool onExecute();
+        virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
 
     private:
         OpenCLBackend *mbackend;
+
+    private:
+        cl_mem *inputCLData = nullptr, *outputCLData = nullptr;
 
     private:
         std::vector<int> mStrides{1, 1};
@@ -36,7 +40,7 @@ namespace SNN
         cl_mem mBiasBuffer;
         std::set<std::string> mBuildOptions;
         std::shared_ptr<ConvolutionCommon> mConvCommon;
-        ImageBufferConverter *mImageConvert;
+        bool mWeightUseBuffer = false;
     };
 } // namespace SNN
 

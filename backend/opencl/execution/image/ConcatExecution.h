@@ -10,10 +10,7 @@ namespace SNN
         ConcatExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
         virtual ~ConcatExecution() = default;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
-        virtual bool onExecute();
-
-    private:
-        bool Concat2(std::shared_ptr<Tensor> tensor);
+        virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs) override;
 
     private:
         OpenCLBackend *mOpenCLBackend;

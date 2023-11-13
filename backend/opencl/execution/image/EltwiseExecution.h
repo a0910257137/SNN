@@ -6,10 +6,10 @@ namespace SNN
     class EltwiseExecution : public Execution
     {
     public:
-        EltwiseExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend, const std::string &compute);
+        explicit EltwiseExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend, const std::string &compute);
         virtual ~EltwiseExecution() = default;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
-        virtual bool onExecute();
+        virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
 
     private:
         uint32_t RealSize(const std::vector<int> &inputShape);
@@ -19,6 +19,9 @@ namespace SNN
         OpenCLBackend *mOpenCLBackend;
 
     private:
+        cl_mem *inputCLData0, *inputCLData1, *outputCLData;
+
+    private:
         bool mBroadCast;
         float mOperatorData;
         std::string mCompute;
@@ -26,7 +29,6 @@ namespace SNN
         cl_kernel mKernel;
         std::vector<size_t> mLWS{1, 1, 1};
         std::vector<size_t> mGWS{1, 1, 1};
-
         size_t mMaxWorkGroupSize;
     };
 } // namespace SNN

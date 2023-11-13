@@ -13,7 +13,7 @@
 #include <limits.h>
 #include <utility>
 #include <vector>
-
+#include <functional>
 #define NQUEUES 1
 
 namespace SNN
@@ -51,8 +51,12 @@ namespace SNN
         cl_device_id *GetDevice() { return _device; };
         cl_uint GetNumDevice() { return _num_devices; };
         cl_command_queue *GetCommandQue() { return _commandQueue; };
-        cl_context &GetGPUContext() { return _GPUContext; };
-
+        cl_context *GetGPUContext() { return &_GPUContext; };
+        unsigned int GetQueueNum();
+        void RunKernel2D(const cl_kernel &kernel, const std::vector<size_t> &gws, const std::vector<size_t> &lws,
+                         OpenCLRuntime *runtime, cl_event *eventPtr = nullptr);
+        void RunKernel3D(const cl_kernel &kernel, const std::vector<size_t> &gws, const std::vector<size_t> &lws,
+                         OpenCLRuntime *runtime, cl_event *eventPtr = nullptr);
         GpuType GetGpuType()
         {
             return mGpuType;
@@ -89,6 +93,9 @@ namespace SNN
             return mTuneLevel;
         }
 
+    public:
+        unsigned int mQueueCount = 0;
+
     protected:
         cl_device_id *_device;
         cl_uint _num_devices;
@@ -102,8 +109,9 @@ namespace SNN
     private:
         bool isSetWorkGroupAttribute = false;
         std::string mDefaultBuildParams = " -cl-mad-enable";
-        std::map<std::string, cl_program> mProgramMaps;
-        std::map<std::string, bool> mProgramDirty;
+        // std::map<std::string, cl_program> mProgramMaps;
+        std::map<std::tuple<std::string, std::string>, cl_program> mBuiltProgramMaps;
+        std::map<std::string, std::tuple<char *, size_t>> mSourceMaps;
         cl_platform_id platform;
         cl_event event = NULL;
         uint32_t mMaxMemAllocSize;

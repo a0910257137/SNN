@@ -7,6 +7,8 @@
 #include "backend/opencl/core/OpenCLSetting.h"
 #include "backend/opencl/utils/coreUtils.h"
 #include "include/SNN/macro.h"
+#include <fstream>
+
 namespace SNN
 {
     class ImageBufferConverter

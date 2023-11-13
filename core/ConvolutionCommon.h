@@ -1,6 +1,6 @@
 #ifndef CONVOLUTIONCOMMON_H
 #define CONVOLUTIONCOMMON_H
-#include "BaseProctocol.h"
+#include "NonCopyable.h"
 #include <map>
 #include <utility>
 #include <vector>
@@ -9,7 +9,7 @@
 #include "include/SNN/Tensor.h"
 namespace SNN
 {
-    class ConvolutionCommon : public BaseProtocol
+    class ConvolutionCommon : public NonCopyable
     {
 
     public:

@@ -25,7 +25,9 @@ __kernel void binary(__private int global_dim0, __private int global_dim1,
     }
 
     FLOAT4 out = CONVERT_FLOAT4(OPERATOR);
+
 #ifdef RELU
+    printf("12");
     out = fmax(out, (FLOAT4)0);
 #endif
     WI_F(output, pos, out);

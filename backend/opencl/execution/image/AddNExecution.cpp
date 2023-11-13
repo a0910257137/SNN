@@ -1,4 +1,4 @@
-#include "AddN.h"
+#include "AddNExecution.h"
 
 namespace SNN
 {
@@ -9,9 +9,8 @@ namespace SNN
 
     bool AddN::onResize(std::shared_ptr<Tensor> tensor)
     {
-
     }
-    bool AddN::onExecute()
+    bool AddN::onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs)
     {
     }
 } // namespace SNN

@@ -29,13 +29,15 @@ namespace SNN
         if (nullptr != mHostBuffer.second && length <= mHostBuffer.first)
             return;
         mHostBuffer.first = length;
-        mHostBuffer.second = clCreateBuffer(_mCLRuntime->GetGPUContext(), CL_MEM_READ_WRITE, length, NULL, NULL);
+
+        cl_context *GPUContext = _mCLRuntime->GetGPUContext();
+        mHostBuffer.second = clCreateBuffer(*GPUContext, CL_MEM_READ_WRITE, length, NULL, NULL);
     }
 
     cl_mem OpenCLBackend::ConvertNHWCBufferToImage(const std::vector<int> &shape, DataFormat data_format, bool needwait, bool svmFlag)
     {
         cl_int err = 0;
-        cl_context &GPUcontext = _mCLRuntime->GetGPUContext();
+        cl_context *GPUcontext = _mCLRuntime->GetGPUContext();
         cl_command_queue *commandQueue = _mCLRuntime->GetCommandQue();
         cl_image_format clImageFormat;
         clImageFormat.image_channel_order = CL_RGBA;
@@ -43,7 +45,7 @@ namespace SNN
         const std::vector<int> outputShape = TensorShapeFormat(shape, data_format);
 
         size_t imageWidth = outputShape[2] * UP_DIV(outputShape[3], 4), imageHeight = outputShape[0] * outputShape[1];
-        cl_mem outputData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageWidth, imageHeight, 0, NULL, &err);
+        cl_mem outputData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageWidth, imageHeight, 0, NULL, &err);
         uint32_t outputGlobalWorkSize[2] = {static_cast<uint32_t>(UP_DIV(outputShape[3], 4) * outputShape[2]),
                                             static_cast<uint32_t>(outputShape[0] * outputShape[1])};
         if (mNHWCBufferToImageFloat == NULL)
@@ -102,10 +104,10 @@ namespace SNN
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         SNN_ASSERT(inputShapes.size() == 1);
         const std::vector<int> &inputShape = inputShapes[0];
-        const std::vector<int> &outputShape = tensor->OutputShape();
+        // const std::vector<int> &outputShape = tensor->OutputShape();
         int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
         this->_AllocHostBuffer(buffer_sizes);
-        int elementSize = buffer_sizes / sizeof(float);
+        // int elementSize = buffer_sizes / sizeof(float);
         // float pseudoIputData[elementSize] = {};
         // err |= clEnqueueWriteBuffer(commandQueue[0], mHostBuffer.second, CL_TRUE, 0, buffer_sizes, pseudoIputData, 0, NULL, NULL);
         // oclCheckError(err, CL_SUCCESS);

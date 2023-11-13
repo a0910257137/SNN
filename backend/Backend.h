@@ -1,5 +1,5 @@
-#ifndef BACKENDFACTORY_H
-#define BACKENDFACTORY_H
+#ifndef BACKEND_H
+#define BACKEND_H
 #include "backend/opencl/core/OpenCLBackend.h"
 #include "backend/cpu/CPUBackend.h"
 #include "backend/opencl/execution/image/DepthwiseConvExecution.h"
@@ -7,24 +7,25 @@
 #include "backend/opencl/execution/image/InterpExecution.h"
 #include "backend/opencl/execution/image/PoolExecution.h"
 #include "backend/opencl/execution/image/ConcatExecution.h"
-#include "backend/opencl/execution/image/AddN.h"
+#include "backend/opencl/execution/image/AddNExecution.h"
 #include "backend/opencl/execution/image/EltwiseExecution.h"
+#include "backend/opencl/execution/image/DeconvExecution.h"
+#include "backend/opencl/execution/image/InputExecution.h"
 #include "include/SNN/Tensor.h"
-
+#include "include/SNN/common.h"
 namespace SNN
 {
-    class NodeFactory
+    class Backend
     {
     public:
-        NodeFactory(BackendConfig &cfg);
-        ~NodeFactory();
-        NodeFactory(const NodeFactory &) = delete;
-        NodeFactory &operator=(const NodeFactory &) = delete;
-        bool BuildOperation(std::shared_ptr<Tensor> tensor);
-        bool GetOperationType() const
-        {
-            return permitFloat16;
-        }
+        Backend(BackendConfig &cfg);
+        ~Backend();
+        Backend(const Backend &) = delete;
+        Backend &operator=(const Backend &) = delete;
+        void BuildOperation(std::shared_ptr<Tensor> tensor, std::vector<std::shared_ptr<Execution>> &netOpList);
+        void ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data);
+
+        void ReleaseBuffer(std::shared_ptr<Tensor> tensor);
         void *mBackend()
         {
             return _mBackend;
@@ -37,4 +38,4 @@ namespace SNN
         bool permitFloat16 = NULL;
     };
 }
-#endif // NODEDFACTORY_H
+#endif // BACKEND_H

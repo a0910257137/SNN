@@ -25,7 +25,6 @@ namespace SNN
 
     bool ConcatExecution::onResize(std::shared_ptr<Tensor> tensor)
     {
-
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         const std::vector<int> &outputShape = tensor->OutputShape();
         SNN_ASSERT(numInputs > 1);
@@ -61,13 +60,8 @@ namespace SNN
         std::string kernelName;
         cl_int err = 0;
         uint32_t idx = 0;
-        cl_context &GPUcontext = mOpenCLRuntime->GetGPUContext();
-        cl_command_queue *commandQueue = mOpenCLRuntime->GetCommandQue();
-        cl_image_format clImageFormat;
-        clImageFormat.image_channel_order = CL_RGBA;
-        clImageFormat.image_channel_data_type = CL_FLOAT;
         int outputImageShape[2] = {UP_DIV(channel, 4) * width, batch * height};
-        cl_mem outputCLData = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, outputImageShape[0], outputImageShape[1], 0, NULL, &err);
+        cl_mem outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, outputImageShape[0], outputImageShape[1], 0, NULL, &err);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[2]);
@@ -76,8 +70,8 @@ namespace SNN
             kernelName = "concat_channel";
             int inputImageShape0[2] = {UP_DIV(inputShapes[0].at(3), 4) * inputShapes[0].at(2), inputShapes[0].at(0) * inputShapes[0].at(1)};
             int inputImageShape1[2] = {UP_DIV(inputShapes[1].at(3), 4) * inputShapes[1].at(2), inputShapes[1].at(0) * inputShapes[1].at(1)};
-            cl_mem inputCLData0 = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, inputImageShape0[0], inputImageShape0[1], 0, NULL, &err);
-            cl_mem inputCLData1 = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, inputImageShape1[0], inputImageShape1[1], 0, NULL, &err);
+            cl_mem inputCLData0 = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, inputImageShape0[0], inputImageShape0[1], 0, NULL, &err);
+            cl_mem inputCLData1 = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, inputImageShape1[0], inputImageShape1[1], 0, NULL, &err);
 
             err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &inputCLData0);
             err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &inputCLData1);
@@ -144,15 +138,8 @@ namespace SNN
         return true;
     }
 
-    bool ConcatExecution::onExecute()
+    bool ConcatExecution::onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs)
     {
     }
 
-    bool ConcatExecution::Concat2(std::shared_ptr<Tensor> tensor)
-    {
-        // if(tensor->is_init)
-        // {
-
-        // }
-    }
 } // namespace SNN

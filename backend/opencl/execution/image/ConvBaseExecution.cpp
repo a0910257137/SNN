@@ -17,13 +17,8 @@ namespace SNN
         else
             buffer_size *= sizeof(float);
         cl_mem biasBuffer;
-        cl_int err;
-        cl_command_queue *commandQueue = mOpenCLRuntime->GetCommandQue();
-        cl_context &GPUcontext = mOpenCLRuntime->GetGPUContext();
-        cl_image_format clImageFormat;
-        clImageFormat.image_channel_order = CL_RGBA;
-        clImageFormat.image_channel_data_type = CL_FLOAT;
-        biasBuffer = clCreateBuffer(GPUcontext, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+        cl_int err = CL_SUCCESS;
+        biasBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                                     buffer_size, NULL, &err);
         oclCheckError(err, CL_SUCCESS);
         float *biasPtrCL = (float *)clEnqueueMapBuffer(commandQueue[0], biasBuffer, true, CL_MAP_WRITE, 0, buffer_size, 0, NULL, NULL, &err);
@@ -50,17 +45,15 @@ namespace SNN
         err = clEnqueueUnmapMemObject(commandQueue[0], biasBuffer, biasPtrCL, 0, NULL, NULL);
         oclCheckError(err, CL_SUCCESS);
         int w[1] = {UP_DIV(biasSize, 4)}, h[1] = {1};
-        cl_mem mBias = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, w[0], h[0], 0, NULL, &err);
-        oclCheckError(err, CL_SUCCESS);
-        err = clFinish(commandQueue[0]);
+        cl_mem mBias = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, w[0], h[0], 0, NULL, &err);
+        // oclCheckError(err, CL_SUCCESS);
+        // err = clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
         CopyBufferToImage(this->mOpenCLRuntime, biasBuffer, mBias, w, h, err);
         oclCheckError(err, CL_SUCCESS);
         err |= clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
         tensor->SetDeviceBias(mBias);
-    }
-    ConvBaseExecution::~ConvBaseExecution()
-    {
+        clReleaseMemObject(biasBuffer);
     }
 } // SNN

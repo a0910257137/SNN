@@ -19,4 +19,45 @@ typedef enum
     kPaddingSame = 1,
     kPaddingValid = 2,
 } Padding;
+typedef enum
+{
+    DEPTHWISECONV2D = 0,
+    CONV2D = 1,
+    DECONV2D = 2,
+    AVERAGE_POOL_2D = 3,
+    MAX_POOL_2D = 4,
+    RESIZE_NEAREST_NEIGHBOR = 5,
+    Relu = 6,
+    CONCATENATION = 7,
+    ADD = 8,
+    SUB = 9,
+    MUL = 10,
+    REALDIV = 11,
+    MINIMUM = 12,
+    MAXIMUM = 13,
+    GREATER = 14,
+    LESS = 15,
+    INPUTDATA = 16,
+
+} OpTypes;
+
+typedef enum
+{
+    kNoType = 0,
+    kFloat32 = 1,
+    kInt32 = 2,
+    kUInt8 = 3,
+    kInt64 = 4,
+    kString = 5,
+    kBool = 6,
+    kInt16 = 7,
+    kComplex64 = 8,
+    kInt8 = 9,
+    kFloat16 = 10,
+    kFloat64 = 11,
+    kComplex128 = 12,
+    kUInt64 = 13,
+    kUInt32 = 14,
+} DType;
+
 #endif

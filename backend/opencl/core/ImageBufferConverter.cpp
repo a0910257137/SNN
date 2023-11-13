@@ -11,7 +11,9 @@ namespace SNN
     }
     bool ImageBufferConverter::ConvertBufferToImage(std::shared_ptr<Tensor> tensor, const OpenCLBufferFormat type, bool needwait, const std::string &buildOption)
     {
-        SNN_ASSERT((tensor->GetOpType() == DepthwiseConv) || tensor->GetOpType() == Conv2D);
+        SNN_ASSERT((tensor->GetOpType() == DEPTHWISECONV2D) ||
+                   (tensor->GetOpType() == CONV2D) ||
+                   (tensor->GetOpType() == DECONV2D));
         std::string kernelName;
         switch (type)
         {
@@ -36,8 +38,9 @@ namespace SNN
         std::set<std::string> buildOptions;
         buildOptions.emplace(buildOption);
         mBufferToImageKernelName = kernelName;
+
         mBufferToImageKernel = this->mOpenCLRuntime->BuildKernel("buffer_to_image", kernelName, buildOptions);
-        cl_context &GPUcontext = this->mOpenCLRuntime->GetGPUContext();
+        cl_context *GPUcontext = this->mOpenCLRuntime->GetGPUContext();
         cl_device_id *device = this->mOpenCLRuntime->GetDevice();
         cl_command_queue *commandQueue = this->mOpenCLRuntime->GetCommandQue();
         cl_image_format clImageFormat;
@@ -48,30 +51,35 @@ namespace SNN
         clGetKernelWorkGroupInfo(mBufferToImageKernel, *device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &maxWorkGroupSize, NULL);
         const std::vector<int> &kernelShape = tensor->KernelShape();
         getImageShape(kernelShape, type, imageShape);
-        int weightSize = 0;
-
         int filterOutputChannel = kernelShape[0], filterInputChannel = kernelShape[1], filterHeight = kernelShape[2], filterWidth = kernelShape[3];
         std::vector<size_t> gws{imageShape[0], imageShape[1]};
         const std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory = tensor->GetMainMemory();
         const std::vector<uint8_t> &ptrIndex = tensor->GetMemoryPtrIndex();
         std::pair<float *, float *> &weight_bias = mainMemory->at(ptrIndex[0]);
         float *weightData = weight_bias.first, *biasData = weight_bias.second;
-        // for()
-        // std::cout << biasData[0] << std::endl;
-        // std::cout << biasData[1] << std::endl;
-        // std::cout << biasData[2] << std::endl;
+        // for (int i = 0; i < 30; i++)
+        // {
+        //     std::cout << weightData[i] << std::endl;
+        // }
         // exit(1);
         const int weight_bytes = tensor->weight_bytes();
         int elementSize = kernelShape[0] * kernelShape[1] * kernelShape[2] * kernelShape[3], buffer_size;
         // const int bias_bytes = tensor->bias_bytes();
-        if (weightData == nullptr || biasData == nullptr)
+        if (tensor->GetOpType() != DECONV2D)
         {
-            printf("ERROR: %s has no weights or bias.", tensor->GetName().c_str());
+            if (weightData == nullptr || biasData == nullptr)
+            {
+                printf("ERROR: %s has no weights or bias. \n", tensor->GetOpName().c_str());
+                return false;
+            }
         }
-        if (weightData == nullptr)
+        else
         {
-            weightSize = weight_bytes / sizeof(float);
-            weightData = weight_bias.first;
+            if (weightData == nullptr)
+            {
+                printf("ERROR: Deconv 2D has no weights. \n");
+                return false;
+            }
         }
         if (this->mOpenCLRuntime->isWeightCpuTransHalf())
         {
@@ -92,7 +100,7 @@ namespace SNN
                 kernelShape[1] * kernelShape[2] * kernelShape[3];
             const int heightWidthSumSize = kernelShape[2] * kernelShape[3];
             int kernel_dims_arr[2] = {kernelShape[2], kernelShape[3]};
-            tmpBuffer = clCreateBuffer(GPUcontext, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, buffer_size, NULL, &err);
+            tmpBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR, buffer_size, NULL, &err);
             oclCheckError(err, CL_SUCCESS);
             float *ptrCL = (float *)clEnqueueMapBuffer(commandQueue[0], tmpBuffer, true, CL_MAP_WRITE, 0, buffer_size, 0, NULL, NULL, &err);
             oclCheckError(err, CL_SUCCESS);
@@ -108,7 +116,7 @@ namespace SNN
                 else
                 {
                     memset(ptrCL, 0.0f, buffer_size);
-                    memcpy(ptrCL, weightData, weight_bytes);
+                    memcpy(ptrCL, weightData, buffer_size);
                 }
             }
             else
@@ -126,10 +134,7 @@ namespace SNN
         {
             const int heightWidthSumSize = kernelShape[2] * kernelShape[3];
             int kernel_dims_arr[4] = {kernelShape[0], kernelShape[1], kernelShape[2], kernelShape[3]};
-            // std::cout << imageShape[0] << std::endl;
-            // std::cout << imageShape[1] << std::endl;
-            // exit(1);
-            cl_mem tmpBuffer = clCreateBuffer(GPUcontext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+            cl_mem tmpBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                               buffer_size, weightData, &err);
             err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(cl_mem), &tmpBuffer);
             err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(kernel_dims_arr), kernel_dims_arr);
@@ -156,7 +161,7 @@ namespace SNN
             err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(int), &kernelShape[3]);
         }
         oclCheckError(err, CL_SUCCESS);
-        cl_mem mFilter = clCreateImage2D(GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        cl_mem mFilter = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
         err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(cl_mem), &mFilter);
         oclCheckError(err, CL_SUCCESS);
         const size_t lws[2] = {16, MAX((unsigned int)1, maxWorkGroupSize / 16)};
@@ -175,7 +180,6 @@ namespace SNN
         // const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         // SNN_ASSERT(inputShapes.size() == 1);
         // const std::vector<int> &inputShape = inputShapes[0];
-
         const std::vector<int> &outputShape = tensor->OutputShape();
         int in_gws[2] = {static_cast<int>(UP_DIV(outputShape[3], 4)) * outputShape[2],
                          static_cast<int>(outputShape[0] * outputShape[1])};
@@ -188,11 +192,11 @@ namespace SNN
         int buffer_sizes = outputShape[0] * outputShape[1] * outputShape[2] * outputShape[3] * sizeof(float);
         uint32_t idx = 0;
         cl_int err = 0;
-        cl_context &GPUcontext = runtime->GetGPUContext();
+        cl_context *GPUcontext = runtime->GetGPUContext();
         cl_command_queue *commandQueue = runtime->GetCommandQue();
-        const cl_mem &mDeviceImage = tensor->GetDeviceOutputData();
+        const cl_mem *mDeviceImage = tensor->GetDeviceOutputData();
         float *h_data = (float *)malloc(buffer_sizes);
-        cl_mem mhostBuffer = clCreateBuffer(GPUcontext, CL_MEM_READ_WRITE, buffer_sizes, NULL, &err);
+        cl_mem mhostBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_WRITE, buffer_sizes, NULL, &err);
         oclCheckError(err, CL_SUCCESS);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &in_gws[0]);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &in_gws[1]);
@@ -200,7 +204,7 @@ namespace SNN
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &outputShape[1]);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &outputShape[2]);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &outputShape[3]);
-        err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(cl_mem), &mDeviceImage);
+        err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(cl_mem), mDeviceImage);
         oclCheckError(err, CL_SUCCESS);
         const uint32_t maxWorkGroupSize = static_cast<uint32_t>(mOpenCLRuntime->getMaxWorkGroupSize(imageToBufferKernel));
         const size_t lws[2] = {16, MAX((size_t)1, maxWorkGroupSize / 16)};
@@ -213,6 +217,10 @@ namespace SNN
         {
             printf("%5f\n", h_data[i]);
         }
+        free(h_data);
+        // std::ofstream wf("/home2/anders/proj_c/SNN/test/stem.bin", std::ios::out | std::ios::binary);
+        // wf.write((char *)h_data, buffer_sizes);
+        // exit(1);
         if (needWait == true)
         {
             clWaitForEvents(1, &event);

@@ -10,47 +10,18 @@
 #include "include/SNN/common.h"
 #include "include/SNN/SNNDefine.h"
 #include "include/SNN/Tensor.h"
-#include "BaseProctocol.h"
+#include "NonCopyable.h"
 #include "Interpreter.h"
-
+#include "Model.h"
+#include "backend/opencl/core/OpenCLBackend.h"
+#include "backend/cpu/CPUBackend.h"
 namespace SNN
 {
-    /*
-     * Pipeline contains miltiple models
-     * One model contains many operators.
-     * */
-    template <typename T>
-    struct array_deleter
-    {
-        void operator()(T const *p)
-        {
-            delete[] p;
-        }
-    };
-    class Pipeline : public BaseProtocol
+    class Pipeline : public Model
     {
     public:
-        Pipeline(std::string model_path, BackendConfig &cfg);
+        Pipeline(ModelConfig &model_cfg, BackendConfig &backend_cfg);
         ~Pipeline();
-
-    public:
-        bool GetSNNGraph();
-        bool BuildSNNGraph();
-        bool AllocMemory(bool firstMalloc);
-        bool Execute();
-        void Run();
-
-    private:
-        bool mAllocInput;
-        bool mOutputStatic;
-        bool msupportModel = false;
-        bool firstMalloc = true;
-        std::string inputModelFormat;
-        std::shared_ptr<bool[]> firstMallocs;
-        std::shared_ptr<NodeFactory> nodefactory;
-        std::unique_ptr<Interpreter> interpreter;
-        std::vector<std::shared_ptr<Tensor>> snnGraph;
-        std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory;
     };
 }
 #endif // PIPELINE_H

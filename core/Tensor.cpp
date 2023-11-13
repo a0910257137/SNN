@@ -14,6 +14,10 @@ namespace SNN
     }
     Tensor::~Tensor()
     {
+        // clReleaseMemObject(mBuffer.mDeviceBuffer.inputData);
+        // clReleaseMemObject(mBuffer.mDeviceBuffer.outputData);
+        // clReleaseMemObject(mBuffer.mDeviceBuffer.mFilter);
+        // clReleaseMemObject(mBuffer.mDeviceBuffer.mBias);
     }
     void Tensor::SetType(int type)
     {

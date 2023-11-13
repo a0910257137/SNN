@@ -1,7 +1,6 @@
 #ifndef UTILS_H__
 #define UTILS_H__
 #include <iostream>
-#include <fstream>
 #include <string>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,9 +9,11 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
+void readImage(std::string &filename, float *output);
 static inline int argmax(std::vector<float> *);
-// inline void Tranpose(float *src, float *dst, FilterFormat inFormat, FilterFormat outFormat, int *shapDims);
-
+float diff_ms(struct timespec *t1, struct timespec *t0);
 void print(int);
 #endif // UTILS_H__
