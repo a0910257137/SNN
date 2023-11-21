@@ -17,9 +17,9 @@ namespace SNN
         if (opType == OpTypes::RESIZE_NEAREST_NEIGHBOR)
         {
             mCordTransform[0] = widthScale;
-            mCordTransform[1] = widthScale < 1.0f ? -0.25 : 0.25;
+            mCordTransform[1] = widthScale < 1.0f ? 0.25 : -0.25;
             mCordTransform[2] = heightScale;
-            mCordTransform[3] = heightScale < 1.0f ? -0.25 : 0.25;
+            mCordTransform[3] = heightScale < 1.0f ? 0.25 : -0.25;
             mKernel = mOpenCLRuntime->BuildKernel("nearest", kernelName, buildOptions);
         }
         else

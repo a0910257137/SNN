@@ -65,9 +65,10 @@ namespace SNN
         else if (tensor->GetActType() == kActSigmoid)
             mBuildOptions.emplace("-DSIGMOID");
         if (mWeightUseBuffer)
-        {
             mBuildOptions.emplace("-DUSE_BUFFER");
-        }
+        // for (auto &m : mBuildOptions)
+        //     std::cout << m << std::endl;
+        // exit(1);
         mKernel = mOpenCLRuntime->BuildKernel("conv_2d", kernelName, mBuildOptions);
         mMaxWorkGroupSize = static_cast<size_t>(mOpenCLRuntime->getMaxWorkGroupSize(mKernel));
     }
@@ -334,7 +335,13 @@ namespace SNN
         // std::set<std::string> buildOptions;
         // buildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
         // cl_kernel imageToBufferKernel = mOpenCLRuntime->BuildKernel("buffer_to_image", "image_to_nhwc_buffer", buildOptions);
-        // mImageConvert->ConvertImageToNHWCBuffer(output_tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
+        // float *outputData = mImageConvert->ConvertImageToNHWCBuffer(output_tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
+        // for (int i = 0; i < 30; i++)
+        // {
+
+        //     std::cout << outputData[i] << std::endl;
+        // }
+        // free(outputData);
         if (err != CL_SUCCESS)
             return false;
         return status;

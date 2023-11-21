@@ -15,7 +15,6 @@ namespace SNN
             kernelOutputChannel = kernelShape[1],
             kernelHeight = kernelShape[2],
             kernelWidth = kernelShape[3];
-
         // oclCheckError(mStrides[0] > 0 && mStrides[1] > 1, true);
         int buffer_size = kernelMultiplier * kernelHeight * kernelWidth * kernelOutputChannel;
         std::string buildOption = "";
@@ -31,6 +30,7 @@ namespace SNN
         bool status = mImageConvert->ConvertBufferToImage(tensor, DW_CONV2D_FILTER, false, buildOption);
         oclCheckError(status, true);
         std::string kernelName = "depthwise_conv2d";
+        // mBuildOptions.emplace("-DNO_BIAS");
         if (mStrides[0] == 1 && mStrides[1] == 1 &&
             mDilations[0] == 1 && mDilations[1] == 1)
             kernelName = "depthwise_conv2d_s1";
@@ -40,6 +40,8 @@ namespace SNN
             mBuildOptions.emplace("-DRELU6");
         else if (tensor->GetActType() == kActSigmoid)
             mBuildOptions.emplace("-DSIGMOID");
+        // for (auto &m : mBuildOptions)
+        //     std::cout << m << std::endl;
         mKernel = mOpenCLRuntime->BuildKernel("depthwise_conv2d", kernelName, mBuildOptions);
         mMaxWorkGroupSize = static_cast<size_t>(mOpenCLRuntime->getMaxWorkGroupSize(mKernel));
     }
@@ -163,7 +165,13 @@ namespace SNN
         // std::set<std::string> mBuildOptions;
         // mBuildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
         // cl_kernel imageToBufferKernel = mOpenCLRuntime->BuildKernel("buffer_to_image", "image_to_nhwc_buffer", mBuildOptions);
-        // mImageConvert->ConvertImageToNHWCBuffer(output_tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
+        // float *outputData = mImageConvert->ConvertImageToNHWCBuffer(output_tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
+        // for (int i = 0; i < 30; i++)
+        // {
+
+        //     std::cout << outputData[i] << std::endl;
+        // }
+        // free(outputData);
         if (err != CL_SUCCESS)
             return false;
         return status;

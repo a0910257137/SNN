@@ -23,10 +23,18 @@ typedef struct BackendConfig
 
 typedef struct ModelConfig
 {
-    std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/WF/scale_down/tflite/FP32.tflite";
+    std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/tflite/mtfd_FP32.tflite";
+    std::string weight_root = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights";
     // std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/WF/scale_down/tflite/backbone.tflite";
-    // std::string mtfd_path = "/aidata/anders/data_collection/okay/WF/archives/test/test_data/con2d_/conv2d.tflite";
-    std::string weight_path = "";
+    std::string bbox_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/bbox/binary";
+    std::string params_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/kps/binary";
+    std::string kps_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/params/binary";
+    std::string BFM_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/BFM";
+    int nObjs = 15;
+    int inputSizeY = 320, inputSizeX = 320;
+    int n_R = 9, n_t3d = 2, n_shp = 40, n_exp = 11;
+    float thresholdVal = .5f;
+    bool model_head_post = true;
 
 } ModelConfig;
 

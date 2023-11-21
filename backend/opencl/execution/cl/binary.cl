@@ -17,6 +17,8 @@ __kernel void binary(__private int global_dim0, __private int global_dim1,
     } else {
       in0 = RI_F(input0, SAMPLER, pos);
     }
+
+
     if (isFull.y == 0) {
       in1 = RI_F(input1, SAMPLER, (int2)(0, 0));
       in1 = (FLOAT4)(in1.x, in1.x, in1.x, in1.x);

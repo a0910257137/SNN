@@ -8,7 +8,8 @@
 #include <string>
 #include <unistd.h>
 #include "Interpreter.h"
-
+#include "misc/utils.h"
+#include "PostProcessor.h"
 namespace SNN
 {
 
@@ -21,24 +22,23 @@ namespace SNN
     public:
         bool GetSNNGraph();
         bool BuildSNNGraph();
-        bool Inference(float *input_data);
-        
+        std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> Inference(float *input_data, float *resizedRatios);
 
     protected:
         std::shared_ptr<Backend> backend;
 
     public:
         std::vector<std::shared_ptr<Execution>> netOpContainer;
-        std::map<int, std::vector<int>> snn_infos;
 
     private:
-        bool mAllocInput;
-        bool mOutputStatic;
         bool msupportModel = false;
         std::string inputModelFormat;
+        std::unique_ptr<PostProcessor> mpostProcessor;
         std::unique_ptr<Interpreter> interpreter;
         std::vector<std::shared_ptr<Tensor>> snnGraph;
         std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory;
+        std::map<std::string, std::map<std::string, std::vector<int>>> mModelMaps;
+        std::string modelName;
     };
 }
 #endif /* MODEL_H */

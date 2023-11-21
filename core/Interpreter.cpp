@@ -2,14 +2,14 @@
 // #include <inttypes.h>
 namespace SNN
 {
-    Interpreter::Interpreter(string model_path)
+    Interpreter::Interpreter(std::string model_path)
     {
         threads = -1;
         model = tflite::FlatBufferModel::BuildFromFile(model_path.c_str());
         TFLITE_MINIMAL_CHECK(model != nullptr);
         tflite::ops::builtin::BuiltinOpResolver resolver;
         tflite::InterpreterBuilder builder(*model, resolver);
-        unique_ptr<tflite::Interpreter> tflite_interpreter(new tflite::Interpreter());
+        std::unique_ptr<tflite::Interpreter> tflite_interpreter(new tflite::Interpreter());
         builder.PreserveAllTensorsExperimental();
         builder(&this->tflite_interpreter, threads);
         TFLITE_MINIMAL_CHECK((this->tflite_interpreter) != nullptr);
@@ -26,7 +26,7 @@ namespace SNN
 
         TfLiteTensor *tflite_tensor;
         int i, j, ptr_size;
-        pair<float *, float *> weight_bias;
+        std::pair<float *, float *> weight_bias;
         int dimSizes, weightBytes, biasBytes;
         tensor->SetType(DataType_DT_FLOAT);
         if (tflite_op == tflite::BuiltinOperator_DEPTHWISE_CONV_2D)
@@ -62,6 +62,11 @@ namespace SNN
                 tensor->SetWeightBytes(static_cast<uint32_t>(weightBytes));
                 float *src = tflite_tensor->data.f;
                 weight_bias.first = (float *)malloc(weightBytes);
+                // for (int k = 0; k < 30; k++)
+                // {
+                //     cout << src[k] << endl;
+                // }
+                // exit(1);
                 // MHWI->MIHW
                 Transpose(src, weight_bias.first, FILTER_FORMAT_MHWI, FILTER_FORMAT_MIHW, tflite_tensor->dims->data);
                 tensor->SetKernelShape(0, tflite_tensor->dims->data[0]);
@@ -74,6 +79,11 @@ namespace SNN
                 biasBytes = dimSizes * sizeof(float);
                 weight_bias.second = (float *)malloc(biasBytes);
                 memcpy(weight_bias.second, tflite_tensor->data.f, biasBytes);
+                // for (int k = 0; k < 30; k++)
+                // {
+                //     cout << weight_bias.second[k] << endl;
+                // }
+                // exit(1);
                 tensor->SetBiasShape(0, tflite_tensor->dims->data[0]);
             }
         }
@@ -252,8 +262,6 @@ namespace SNN
             TfLiteAddParams *tflite_params = (TfLiteAddParams *)node.builtin_data;
             tensor->SetActType(tflite_params->activation);
             tensor->SetOpType(ADD);
-            // tensor->inputIndex.push_back(node.inputs->data[0]);
-            // tensor->inputIndex.push_back(node.inputs->data[1]);
             for (i = 0; i < node.inputs->size; i++)
             {
                 tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[i]);
@@ -385,11 +393,14 @@ namespace SNN
 
         mainMemory->push_back(weight_bias);
     }
-    vector<shared_ptr<Tensor>> Interpreter::mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory, std::map<int, std::vector<int>> &snn_infos)
+    std::vector<std::shared_ptr<Tensor>> Interpreter::mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory,
+                                                                       std::map<std::string, std::vector<int>> &modelMaps)
     {
-        int node_index, i, j, connection_node_index;
-        vector<int> execution_plan = this->tflite_interpreter->execution_plan();
-        vector<shared_ptr<Tensor>> GraphNodes;
+        int node_index, i, j;
+        int tensor_index = 0, merged_counts = 0, k = 0;
+        std::string op_name;
+        std::vector<int> execution_plan = this->tflite_interpreter->execution_plan();
+        std::vector<std::shared_ptr<Tensor>> GraphNodes;
         tflite::BuiltinOperator tflite_op;
         numOperators = execution_plan.size() + 1;
         // for predefine constructor
@@ -397,39 +408,45 @@ namespace SNN
         GraphNodes.reserve(numOperators);
         printf("INFO: Start converting Tf-Lite graph to SNN graph ... \n");
         std::map<int, int> tflite_infos;
-        //
-        TfLiteTensor *tflite_tensor = this->tflite_interpreter->input_tensor(0);
-        shared_ptr<Tensor> input_tensor(new Tensor()); // default tensor
-        std::vector<uint32_t> inputShape(4, 0);
-        for (j = 0; j < 4; ++j)
+        this->GetInputTensor(GraphNodes, modelMaps);
+        std::shared_ptr<Tensor> last_tensor;
+        int outputIndexSize = tflite_interpreter->outputs().size();
+        std::vector<int> outputIndex(outputIndexSize, 0);
+        for (auto &node_index : execution_plan)
         {
-            inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
-            input_tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
-        }
-        input_tensor->SetInputShape(inputShape);
-        input_tensor->SetOpType(INPUTDATA);
-        GraphNodes.push_back(input_tensor);
-        for (i = 0; i < execution_plan.size(); ++i)
-        {
-            node_index = execution_plan[i];
+            // printf("---------------------- node index is %d ---------------------\n", tensor_index);
             std::vector<int> index;
-            shared_ptr<Tensor> tensor(new Tensor()); // default tensor
-            const pair<TfLiteNode, TfLiteRegistration> *node_and_registration = (this->tflite_interpreter)->node_and_registration(node_index);
+            const std::pair<TfLiteNode, TfLiteRegistration> *node_and_registration = (this->tflite_interpreter)->node_and_registration(node_index);
             const TfLiteNode &node = node_and_registration->first;
             const TfLiteRegistration &registration = node_and_registration->second;
+            op_name = tflite::GetOpNameByRegistration(registration);
             tflite_op = static_cast<tflite::BuiltinOperator>(registration.builtin_code);
+            for (j = 0; j < outputIndexSize; j++)
+            {
+                // cout << tflite_interpreter->outputs()[j] << endl;
+                if (tflite_interpreter->outputs()[j] == node.outputs->data[0])
+                {
+                    outputIndex[k] = tensor_index + 1;
+                    k++;
+                }
+            }
+            // for transpose convolution
             if ((tflite_op == tflite::BuiltinOperator_SHAPE) ||
                 (tflite_op == tflite::BuiltinOperator_STRIDED_SLICE) ||
                 (tflite_op == tflite::BuiltinOperator_PACK))
                 continue;
-            string op_name = tflite::GetOpNameByRegistration(registration);
-            // [SHAPE, STRIDED_SLICE, PACK, TRANSPOSE_CONV];
-            // printf("The node index is %d\n", i);
-            // printf("The op name is %s\n", op_name.c_str());
-            // std::cout << node.inputs->data[0] << std::endl;
-            // std::cout << "Output index is: " << node.outputs->data[0] << std::endl;
+            if (tflite_op == tflite::BuiltinOperator_LOGISTIC)
+            {
+                last_tensor = GraphNodes.at(tensor_index);
+                last_tensor->SetActType(TfLiteFusedActivation::kTfLiteActSigmoid);
+                merged_counts++;
+                continue;
+            }
+
+            // new tensor for snn graph
+            std::shared_ptr<Tensor> tensor(new Tensor()); // default tensor
             tensor->SetOpName(op_name);
-            tflite_infos[node.outputs->data[0]] = i;
+            tflite_infos[node.outputs->data[0]] = tensor_index;
             if (tflite_op == tflite::BuiltinOperator_CONCATENATION ||
                 tflite_op == tflite::BuiltinOperator_ADD ||
                 tflite_op == tflite::BuiltinOperator_MUL ||
@@ -437,12 +454,10 @@ namespace SNN
                 tflite_op == tflite::BuiltinOperator_MUL)
             {
                 index = {tflite_infos[node.inputs->data[0]] + 1, tflite_infos[node.inputs->data[1]] + 1};
-                snn_infos[i] = index;
             }
             else
             {
-                std::vector<int> index;
-                if (i == 0)
+                if (node_index == 0)
                 {
                     index = {tflite_infos[node.inputs->data[0]]};
                 }
@@ -450,19 +465,41 @@ namespace SNN
                 {
                     index = {tflite_infos[node.inputs->data[0] + 1]};
                 }
-
-                snn_infos[i] = index;
             }
-            IdentifyOperation(tensor, mainMemory, node, tflite_op);
-            GraphNodes.push_back(tensor);
+            tensor->inputIndex = index;
+            this->IdentifyOperation(tensor, mainMemory, node, tflite_op);
+            GraphNodes.emplace_back(tensor);
+            tensor_index++;
         }
-        // exit(1);
-        // std::vector<int> index{120};
-        // snn_infos[121] = {120};
+        numOperators -= merged_counts;
+        SNN_ASSERT(tensor_index + 1 == numOperators);
+        GraphNodes.resize(numOperators);
+        modelMaps["outputIndex"] = outputIndex;
         tflite_interpreter.reset();
         TFLITE_MINIMAL_CHECK((tflite_interpreter) == nullptr);
-
         return GraphNodes;
+    }
+    void Interpreter::GetInputTensor(std::vector<std::shared_ptr<Tensor>> &GraphNodes, std::map<std::string, std::vector<int>> &modelMaps)
+    {
+        TfLiteTensor *tflite_tensor = this->tflite_interpreter->input_tensor(0);
+        std::shared_ptr<Tensor> input_tensor(new Tensor()); // default tensor
+        std::vector<uint32_t> inputShape(4, 0);
+        int i;
+        for (i = 0; i < 4; ++i)
+        {
+            inputShape[i] = static_cast<uint32_t>(tflite_tensor->dims->data[i]);
+            input_tensor->SetOutputShape(i, static_cast<uint32_t>(tflite_tensor->dims->data[i]));
+        }
+        int inputSize = tflite_interpreter->inputs().size();
+        std::vector<int> inputIndex(inputSize, 0);
+        for (i = 0; i < inputSize; i++)
+        {
+            inputIndex[i] = tflite_interpreter->inputs()[i];
+        }
+        input_tensor->SetInputShape(inputShape);
+        input_tensor->SetOpType(INPUTDATA);
+        GraphNodes.emplace_back(input_tensor);
+        modelMaps["inputIndex"] = inputIndex;
     }
     void Interpreter::Transpose(float *src, float *dst, FilterFormat inFormat, FilterFormat outFormat, int *shapDims)
     {

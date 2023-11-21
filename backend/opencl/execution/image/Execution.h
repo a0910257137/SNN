@@ -20,7 +20,7 @@ namespace SNN
         virtual ~Execution();
         virtual bool onResize(Tensor *inputs, int *input_shape, int *output_shape);
         virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs);
-        bool onConvert(std::shared_ptr<Tensor> &input);
+        float *onConvert(std::shared_ptr<Tensor> &input);
 
     public:
         cl_context *GPUcontext;

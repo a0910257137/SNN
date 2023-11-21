@@ -109,6 +109,7 @@ namespace SNN
     private:
         bool isSetWorkGroupAttribute = false;
         std::string mDefaultBuildParams = " -cl-mad-enable";
+        // std::string mDefaultBuildParams = " ";
         // std::map<std::string, cl_program> mProgramMaps;
         std::map<std::tuple<std::string, std::string>, cl_program> mBuiltProgramMaps;
         std::map<std::string, std::tuple<char *, size_t>> mSourceMaps;

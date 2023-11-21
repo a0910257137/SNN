@@ -1,6 +1,3 @@
-#ifdef MNN_SUPPORT_FP16
-#pragma OPENCL EXTENSION cl_khr_fp16 : enable
-#endif
 #define READ_INPUT_IMAGE(i, base)                                              \
   int inOffset##i = inWidthOffset##i + base;                                   \
   inOffset##i = select(inCurIdx + inOffset##i, -1,                             \
@@ -196,10 +193,9 @@ __kernel
     heightIdx += dilationShape.x;
     for (int kw = 0; kw < filterShape.y; kw++) {
       int filterIdx = mad24(kh, filterShape.y, kw);
-      //
       FLOAT4 inValue0, inValue1, inValue2, inValue3;
       int inWidthIdx = mul24(kw, dilationShape.y);
-      // printf("%d\n", inWidthIdx);
+
       READ_INPUT_IMAGE(0, inWidthIdx);
       READ_INPUT_IMAGE(1, inWidthIdx);
       READ_INPUT_IMAGE(2, inWidthIdx);
@@ -215,23 +211,22 @@ __kernel
     }
   }
 
-  // #ifdef RELU
-  //   outValue0 = fmax(outValue0, (FLOAT4)0);
-  //   outValue1 = fmax(outValue1, (FLOAT4)0);
-  //   outValue2 = fmax(outValue2, (FLOAT4)0);
-  //   outValue3 = fmax(outValue3, (FLOAT4)0);
-  // #endif
+#ifdef RELU
+  outValue0 = fmax(outValue0, (FLOAT4)0);
+  outValue1 = fmax(outValue1, (FLOAT4)0);
+  outValue2 = fmax(outValue2, (FLOAT4)0);
+  outValue3 = fmax(outValue3, (FLOAT4)0);
+#endif
 
-  // #ifdef RELU6
-  //   outValue0 = clamp(outValue0, (FLOAT4)0, (FLOAT4)6);
-  //   outValue1 = clamp(outValue1, (FLOAT4)0, (FLOAT4)6);
-  //   outValue2 = clamp(outValue2, (FLOAT4)0, (FLOAT4)6);
-  //   outValue3 = clamp(outValue3, (FLOAT4)0, (FLOAT4)6);
-  // #endif
+#ifdef RELU6
+  outValue0 = clamp(outValue0, (FLOAT4)0, (FLOAT4)6);
+  outValue1 = clamp(outValue1, (FLOAT4)0, (FLOAT4)6);
+  outValue2 = clamp(outValue2, (FLOAT4)0, (FLOAT4)6);
+  outValue3 = clamp(outValue3, (FLOAT4)0, (FLOAT4)6);
+#endif
 
   const int outWidthBlockidx4 = outWidthBlockidx << 2;
   const int remain = outputShape.y - outWidthBlockidx4;
-
   int outWidthIdx =
       mul24(outChannelBlockIdx, outputShape.y) + outWidthBlockidx4;
   if (remain >= 4) {

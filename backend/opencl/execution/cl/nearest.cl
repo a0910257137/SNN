@@ -61,7 +61,7 @@ interp3D(GLOBAL_SIZE_3_DIMS __read_only image2d_t input,
   const int output_channel_block_idx = get_global_id(0);
   const int output_height_width_block_idx = get_global_id(1);
   const int output_batch_depth_block_idx = get_global_id(2);
-  printf("%d\n", output_channel_block_idx);
+//   printf("%d\n", output_channel_block_idx);
   DEAL_NON_UNIFORM_DIM3(output_channel_block_idx, output_height_width_block_idx,
                         output_batch_depth_block_idx);
   const int output_channel_block_idxs = global_size_dim0;

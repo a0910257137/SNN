@@ -173,8 +173,9 @@ namespace SNN
         tensor->SetDeviceFilter(mFilter);
         return true;
     }
-    bool ImageBufferConverter::ConvertImageToNHWCBuffer(std::shared_ptr<Tensor> tensor, cl_kernel &imageToBufferKernel,
-                                                        OpenCLRuntime *runtime, bool needWait, bool svmFlag)
+
+    float *ImageBufferConverter::ConvertImageToNHWCBuffer(std::shared_ptr<Tensor> tensor, cl_kernel &imageToBufferKernel,
+                                                          OpenCLRuntime *runtime, bool needWait, bool svmFlag)
     {
 
         // const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
@@ -213,11 +214,12 @@ namespace SNN
         err |= clEnqueueNDRangeKernel(commandQueue[0], imageToBufferKernel, 2, NULL, roundUpGroupWorkSize, lws, 0, NULL, &event);
         oclCheckError(err, CL_SUCCESS);
         err |= clEnqueueReadBuffer(commandQueue[0], mhostBuffer, CL_TRUE, 0, buffer_sizes, h_data, 0, NULL, NULL);
-        for (int i = 0; i < 30; i++)
-        {
-            printf("%5f\n", h_data[i]);
-        }
-        free(h_data);
+        // clRetainMemObject(*mDeviceImage);
+        // for (int i = 0; i < 30; i++)
+        // {
+        //     printf("%5f\n", h_data[i]);
+        // }
+        // free(h_data);
         // std::ofstream wf("/home2/anders/proj_c/SNN/test/stem.bin", std::ios::out | std::ios::binary);
         // wf.write((char *)h_data, buffer_sizes);
         // exit(1);
@@ -227,6 +229,7 @@ namespace SNN
         }
         err |= clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
-        return true;
+        clReleaseMemObject(mhostBuffer);
+        return h_data;
     }
 }

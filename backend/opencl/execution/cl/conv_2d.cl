@@ -244,7 +244,12 @@ __kernel
   out2 = clamp(out2, (FLOAT4)0, (FLOAT4)6);
   out3 = clamp(out3, (FLOAT4)0, (FLOAT4)6);
 #endif
-
+#ifdef SIGMOID
+  out0 = native_recip(1.0f + (FLOAT4)native_exp(-out0));
+  out1 = native_recip(1.0f + (FLOAT4)native_exp(-out1));
+  out2 = native_recip(1.0f + (FLOAT4)native_exp(-out2));
+  out3 = native_recip(1.0f + (FLOAT4)native_exp(-out3));
+#endif
   const int out_x_base = mul24(output_channel_block_idx, output_shape.y);
   int out_x_idx = output_width_block_idx << 2;
 
@@ -433,6 +438,12 @@ __kernel
   out3 = clamp(out3, (FLOAT4)0, (FLOAT4)6);
 #endif
 
+#ifdef SIGMOID
+  out0 = native_recip(1.0f + (FLOAT4)native_exp(-out0));
+  out1 = native_recip(1.0f + (FLOAT4)native_exp(-out1));
+  out2 = native_recip(1.0f + (FLOAT4)native_exp(-out2));
+  out3 = native_recip(1.0f + (FLOAT4)native_exp(-out3));
+#endif
   const int out_x_base = mul24(out_channel_block_idx, output_shape.y);
   int out_x_idx = out_height_block_idx << 2;
   const int remain = output_shape.y - out_x_idx;

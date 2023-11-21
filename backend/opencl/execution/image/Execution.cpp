@@ -20,15 +20,14 @@ namespace SNN
     {
         return true;
     }
-    bool Execution::onConvert(std::shared_ptr<Tensor> &input)
+    float *Execution::onConvert(std::shared_ptr<Tensor> &input)
     {
         std::set<std::string> buildOptions;
-        // const std::vector<std::vector<int>> &inputShapes = input->InputShape();
-        // const std::vector<int> &inputShape = inputShapes[0];
         buildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
         cl_kernel imageToBufferKernel = mOpenCLRuntime->BuildKernel("buffer_to_image", "image_to_nhwc_buffer", buildOptions);
-        mImageConvert->ConvertImageToNHWCBuffer(input, imageToBufferKernel, mOpenCLRuntime, false, false);
-        return true;
+        float *outputData = mImageConvert->ConvertImageToNHWCBuffer(input, imageToBufferKernel, mOpenCLRuntime, false, false);
+        // clRetainMemObject();
+        return outputData;
     }
     Execution::~Execution()
     {

@@ -5,7 +5,6 @@
 #include <iostream>
 #include "misc/utils.h"
 #include "include/SNN/Tensor.h"
-// #include "backend/opencl/core/OpenCLBackend.h"
 #include "backend/Backend.h"
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/op_resolver.h"
@@ -31,11 +30,15 @@ namespace SNN
         ~Interpreter();
         Interpreter(const Interpreter &) = delete;
         Interpreter &operator=(const Interpreter &) = delete;
-        vector<shared_ptr<Tensor>> mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory, std::map<int, std::vector<int>> &snn_infos);
+        vector<shared_ptr<Tensor>> mGraphToSNNGraph(std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory,
+                                                    std::map<std::string, std::vector<int>> &modelMaps);
+
+    private:
         void IdentifyOperation(shared_ptr<Tensor> tensor,
                                std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory,
                                const TfLiteNode &tflite_params,
                                tflite::BuiltinOperator tflite_op);
+        void GetInputTensor(std::vector<std::shared_ptr<Tensor>> &GraphNodes, std::map<std::string, std::vector<int>> &modelMaps);
         void Transpose(float *src, float *dst, FilterFormat inFormat, FilterFormat outFormat, int *shapDims);
 
     public:
