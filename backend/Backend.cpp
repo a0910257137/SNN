@@ -23,7 +23,7 @@ namespace SNN
         delete (void *)this->_mBackend;
     }
 
-    void Backend::ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data)
+    void Backend::ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data, bool needResize)
     {
         OpenCLBackend *mbk = (OpenCLBackend *)_mBackend;
         OpenCLRuntime *_mCLRuntime = mbk->CLRuntime();
@@ -44,10 +44,14 @@ namespace SNN
         mbk->mHostBuffer.second = mhostBuffer;
         cl_mem inputCLData = mbk->ConvertNHWCBufferToImage(tensor->InputShape()[0], tensor->data_format, false, false);
         SNN_ASSERT(inputCLData != NULL);
+        if (needResize)
+        {
+            
+        }
         tensor->SetDeviceInputData(inputCLData);
         tensor->SetDeviceOutputData(inputCLData);
         clReleaseMemObject(mhostBuffer);
-    }
+        }
     void Backend::BuildOperation(std::shared_ptr<Tensor> tensor, std::vector<std::shared_ptr<Execution>> &netOpContainer)
     {
         if (tensor->GetOpType() == DEPTHWISECONV2D)

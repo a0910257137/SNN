@@ -23,8 +23,7 @@ namespace SNN
         Backend(const Backend &) = delete;
         Backend &operator=(const Backend &) = delete;
         void BuildOperation(std::shared_ptr<Tensor> tensor, std::vector<std::shared_ptr<Execution>> &netOpList);
-        void ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data);
-
+        void ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data, bool needResize);
         void ReleaseBuffer(std::shared_ptr<Tensor> tensor);
         void *mBackend()
         {

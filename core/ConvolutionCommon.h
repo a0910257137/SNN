@@ -1,8 +1,6 @@
 #ifndef CONVOLUTIONCOMMON_H
 #define CONVOLUTIONCOMMON_H
 #include "NonCopyable.h"
-#include <map>
-#include <utility>
 #include <vector>
 #include <memory>
 #include "include/SNN/op_data.h"

@@ -3,7 +3,6 @@
 #include "include/SNN/common.h"
 #include "NonCopyable.h"
 #include <iostream>
-#include <cstring>
 #include <memory>
 #include <string>
 #include <unistd.h>

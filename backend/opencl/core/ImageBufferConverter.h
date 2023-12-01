@@ -1,13 +1,10 @@
 #ifndef IMAGEBUFFERCONVERTER_H
 #define IMAGEBUFFERCONVERTER_H
-#include <set>
 #include <iostream>
 #include "include/SNN/Tensor.h"
 #include "backend/opencl/core/runtime/OpenCLRuntime.h"
 #include "backend/opencl/core/OpenCLSetting.h"
 #include "backend/opencl/utils/coreUtils.h"
-#include "include/SNN/macro.h"
-#include <fstream>
 
 namespace SNN
 {

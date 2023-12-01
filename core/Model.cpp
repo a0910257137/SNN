@@ -71,7 +71,7 @@ namespace SNN
     std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> Model::Inference(float *input_data, float *resizedRatios)
     {
         int i, j;
-        this->backend->ConvertInputBuffer(snnGraph.at(0), input_data);
+        this->backend->ConvertInputBuffer(snnGraph.at(0), input_data, true);
         bool status;
         std::shared_ptr<Execution> op;
         std::vector<int> input_idx, output_idx;
@@ -96,40 +96,83 @@ namespace SNN
             inputs.clear();
             outputs.clear();
         }
+        float *cls_x, *bbox_x, *param_x, *trans_x;
         std::vector<int> &inputIndex = mModelMaps[modelName]["inputIndex"];
         std::vector<int> &outputIndex = mModelMaps[modelName]["outputIndex"];
-        float *cls_x, *bbox_x, *x;
+        std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> results;
+        for (i = 0; i < outputIndex.size() / 4; i++)
+        {
+            if (i == 0 || i == 2)
+                continue;
+            if (i == 2)
+            {
+                tensor = snnGraph.at(outputIndex[4 * i]);
+                param_x = op->onConvert(tensor);
+                tensor = snnGraph.at(outputIndex[4 * i + 1]);
+                trans_x = op->onConvert(tensor);
+                tensor = snnGraph.at(outputIndex[4 * i + 2]);
+                bbox_x = op->onConvert(tensor);
+                tensor = snnGraph.at(outputIndex[4 * i + 3]);
+                cls_x = op->onConvert(tensor);
+            }
+            else
+            {
+                tensor = snnGraph.at(outputIndex[4 * i]);
+                bbox_x = op->onConvert(tensor);
+                tensor = snnGraph.at(outputIndex[4 * i + 1]);
+                cls_x = op->onConvert(tensor);
+                tensor = snnGraph.at(outputIndex[4 * i + 2]);
+                param_x = op->onConvert(tensor);
+                tensor = snnGraph.at(outputIndex[4 * i + 3]);
+                trans_x = op->onConvert(tensor);
+            }
+            mpostProcessor->MTFDBaseProcessor(results,
+                                              i,
+                                              resizedRatios,
+                                              cls_x,
+                                              bbox_x,
+                                              param_x,
+                                              trans_x);
+            free(cls_x);
+            free(bbox_x);
+            free(param_x);
+            free(trans_x);
+        }
+        // exit(1);
         /** Predicting outputs
          * "s0_x", "s0_bbox_x", "s0_cls_x"
          * "s1_x", "s1_bbox_x", "s1_cls_x"
          * "s2_x", "s2_bbox_x", "s2_cls_x"
          * */
-        std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> results;
-        for (i = 0; i < outputIndex.size() / 3; i++)
-        {
-            // std::cout << " ------------------------ Node op index: ------------------------  " << std::endl;
-            tensor = snnGraph.at(outputIndex[3 * i]);
-            const std::vector<int> &xShape = tensor->OutputShape();
-            x = op->onConvert(tensor);
-            tensor = snnGraph.at(outputIndex[3 * i + 1]);
-            const std::vector<int> &bbox_xShape = tensor->OutputShape();
-            bbox_x = op->onConvert(tensor);
-            tensor = snnGraph.at(outputIndex[3 * i + 2] - 1);
-            const std::vector<int> &cls_xShape = tensor->OutputShape();
-            cls_x = op->onConvert(tensor);
-            mpostProcessor->MTFDProcessor(results,
-                                          i,
-                                          resizedRatios,
-                                          cls_x,
-                                          bbox_x,
-                                          x,
-                                          xShape,
-                                          bbox_xShape,
-                                          cls_xShape);
-            free(x);
-            free(cls_x);
-            free(bbox_x);
-        }
+        // float *cls_x, *bbox_x, *x;
+        // std::vector<int> &inputIndex = mModelMaps[modelName]["inputIndex"];
+        // std::vector<int> &outputIndex = mModelMaps[modelName]["outputIndex"];
+        // std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> results;
+        // for (i = 0; i < outputIndex.size() / 3; i++)
+        // {
+        //     // std::cout << " ------------------------ Node op index: ------------------------  " << std::endl;
+        //     tensor = snnGraph.at(outputIndex[3 * i]);
+        //     const std::vector<int> &xShape = tensor->OutputShape();
+        //     x = op->onConvert(tensor);
+        //     tensor = snnGraph.at(outputIndex[3 * i + 1]);
+        //     const std::vector<int> &bbox_xShape = tensor->OutputShape();
+        //     bbox_x = op->onConvert(tensor);
+        //     tensor = snnGraph.at(outputIndex[3 * i + 2] - 1);
+        //     const std::vector<int> &cls_xShape = tensor->OutputShape();
+        //     cls_x = op->onConvert(tensor);
+        //     mpostProcessor->MTFDProcessor(results,
+        //                                   i,
+        //                                   resizedRatios,
+        //                                   cls_x,
+        //                                   bbox_x,
+        //                                   x,
+        //                                   xShape,
+        //                                   bbox_xShape,
+        //                                   cls_xShape);
+        //     free(x);
+        //     free(cls_x);
+        //     free(bbox_x);
+        // }
         this->backend->ReleaseBuffer(snnGraph.at(0));
         return results;
     }

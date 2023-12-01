@@ -1,10 +1,8 @@
 #ifndef OPENCLBACKEND_H
 #define OPENCLBACKEND_H
-#include <algorithm>
 #include "include/SNN/Tensor.h"
 #include "OpenCLSetting.h"
 #include "runtime/OpenCLRuntime.h"
-#include "include/SNN/common.h"
 #include "backend/opencl/utils/coreUtils.h"
 #include <iostream>
 namespace SNN

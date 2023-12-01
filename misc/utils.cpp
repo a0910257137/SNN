@@ -1,15 +1,18 @@
 #include "utils.h"
 
-void readVideo(cv::Mat src, float *dts, float *resizedRatios)
+void readVideo(cv::Mat &src, float *dts, float *resizedRatios, bool isCVResize)
 {
-    // cv::Mat frame = cv::imread(filename);
     resizedRatios[1] = (float)src.rows / 320.0f;
     resizedRatios[0] = (float)src.cols / 320.0f;
-    cv::resize(src, src, cv::Size(320, 320), 0.5, 0.5, cv::INTER_AREA);
+    if (isCVResize)
+    {
+        // cv::resize(src, src, cv::Size(320, 320), 0.5, 0.5, cv::INTER_AREA);
+        // src.convertTo(src, CV_32F, 1.0 / 255, 0);
+        src.convertTo(src, CV_32FC3);
+    }
     cv::cvtColor(src, src, CV_BGR2RGB);
-    src.convertTo(src, CV_32F, 1.0 / 255, 0);
-    int bytes = src.cols * src.rows * 3 * sizeof(float);
-    memcpy(dts, (float *)src.data, bytes);
+    // int bytes = src.cols * src.rows * 3 * sizeof(float);
+    // memcpy(dts, (float *)src.data, bytes);
 }
 
 void readImage(std::string &filename, float *output, float *resizedRatios)
@@ -17,11 +20,12 @@ void readImage(std::string &filename, float *output, float *resizedRatios)
     cv::Mat frame = cv::imread(filename);
     resizedRatios[1] = (float)frame.rows / 320.0f;
     resizedRatios[0] = (float)frame.cols / 320.0f;
-    cv::resize(frame, frame, cv::Size(320, 320), 0.5, 0.5, cv::INTER_AREA);
+    // cv::resize(frame, frame, cv::Size(320, 320), 0.5, 0.5, cv::INTER_AREA);
     cv::cvtColor(frame, frame, CV_BGR2RGB);
     frame.convertTo(frame, CV_32F, 1.0 / 255, 0);
     int bytes = frame.cols * frame.rows * 3 * sizeof(float);
-    memcpy(output, (float *)frame.data, bytes);
+    output = (float *)frame.data;
+    // memcpy(output, (float *)frame.data, bytes);
 }
 void print(int n)
 {
@@ -79,6 +83,29 @@ std::string remove_extension(std::string const &filename)
 {
     typename std::string::size_type const p(filename.find_last_of('.'));
     return p > 0 && p != std::string::npos ? filename.substr(0, p) : filename;
+}
+
+char *common_read_file(const char *path, unsigned long *length_out)
+{
+    char *buffer;
+    FILE *f;
+    long length;
+    f = fopen(path, "r");
+    assert(NULL != f);
+    fseek(f, 0, SEEK_END);
+    length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    buffer = (char *)malloc(length);
+    if (fread(buffer, 1, length, f) < (size_t)length)
+    {
+        return NULL;
+    }
+    fclose(f);
+    if (NULL != length_out)
+    {
+        *length_out = length;
+    }
+    return buffer;
 }
 
 std::tuple<int, float *> _readBinary(std::string &file_name, FILE *ptr)

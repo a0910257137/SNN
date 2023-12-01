@@ -6,7 +6,6 @@
 #include <vector>
 #include <iostream>
 #include <tuple>
-#include <math.h>
 #include "misc/utils.h"
 #include "misc/nms.h"
 namespace SNN
@@ -19,31 +18,54 @@ namespace SNN
         ~PostProcessor() = default;
         PostProcessor(const PostProcessor &) = delete;
         PostProcessor &operator=(const PostProcessor &) = delete;
-        std::pair<std::vector<float>, std::vector<std::vector<float>>> MTFDProcessor(std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> &results,
-                                                                                     int i,
-                                                                                     float *resizedRatios,
-                                                                                     float *cls_x,
-                                                                                     float *bbox_x,
-                                                                                     float *x,
-                                                                                     const std::vector<int> &xShape,
-                                                                                     const std::vector<int> &bbox_xShape,
-                                                                                     const std::vector<int> &cls_xShape);
+        void MTFDConvProcessor(std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> &results,
+                               int i,
+                               float *resizedRatios,
+                               float *cls_x,
+                               float *bbox_x,
+                               float *x,
+                               const std::vector<int> &xShape,
+                               const std::vector<int> &bbox_xShape,
+                               const std::vector<int> &cls_xShape);
+        void MTFDBaseProcessor(std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> &results,
+                               int i,
+                               float *resizedRatios,
+                               float *cls_x,
+                               float *bbox_x,
+                               float *param_x,
+                               float *trans_x);
 
     private:
         std::vector<std::vector<float>> FindCoord(
             float *cls_x,
-            const std::vector<int> &cls_xShape);
+            const std::vector<int> &cls_xShape,
+            bool needSigmoid = false);
 
-        std::vector<std::vector<float>> GetBbox(int i,
+        std::vector<std::vector<float>> GetBboxWithConv(int i,
+                                                        float *bbox_x,
+                                                        std::vector<std::vector<float>> &coords,
+                                                        const std::vector<int> &bbox_xShape);
+
+        std::pair<std::vector<float>, std::vector<float>> GetParamsKpsWithConv(int stride_idx,
+                                                                               float *bbox_x,
+                                                                               std::vector<float> &coords,
+                                                                               const std::vector<int> &xShape);
+
+        std::vector<std::vector<float>> GetBbox(int stride_idx,
                                                 float *bbox_x,
                                                 std::vector<std::vector<float>> &coords,
                                                 const std::vector<int> &bbox_xShape);
-        std::pair<std::vector<std::vector<float>>, std::vector<std::vector<float>>> GetParamsKps(int stride_idx,
-                                                                                                 float *bbox_x,
-                                                                                                 std::vector<std::vector<float>> &coords,
-                                                                                                 const std::vector<int> &xShape);
+
+        std::pair<std::vector<float>, std::vector<float>> GetParamsKps(int stride_idx,
+                                                                       std::vector<float> &coord,
+                                                                       float *param_x,
+                                                                       float *trans_x);
+
         std::vector<std::vector<float>> GetLandmarks(std::vector<float> &param);
-        void ResizedBboxLandmarks(float *resizedRatios, std::vector<float> &bbox, std::vector<std::vector<float>> &landmarks, std::vector<float> &tran);
+        void ResizedBboxLandmarks(float *resizedRatios,
+                                  std::vector<float> &bbox,
+                                  std::vector<std::vector<float>> &landmarks,
+                                  std::vector<float> &tran);
 
     private:
         float thresholdVal;

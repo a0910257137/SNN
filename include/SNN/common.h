@@ -23,9 +23,9 @@ typedef struct BackendConfig
 
 typedef struct ModelConfig
 {
-    std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/tflite/mtfd_FP32.tflite";
+    std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/whole/mobilenext_kps/tflite/mtfd_preporcess_FP32.tflite";
     std::string weight_root = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights";
-    // std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/WF/scale_down/tflite/backbone.tflite";
+    // std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/whole/mobilenext_kps/tflite/mtfd_FP32.tflite";
     std::string bbox_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/bbox/binary";
     std::string params_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/kps/binary";
     std::string kps_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/params/binary";

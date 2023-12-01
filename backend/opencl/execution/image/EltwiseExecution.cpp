@@ -16,6 +16,11 @@ namespace SNN
             mBuildOptions.emplace("-DRELU6");
         else if (tensor->GetActType() == kActSigmoid)
             mBuildOptions.emplace("-DSIGMOID");
+        // for (auto &a : mBuildOptions)
+        // {
+        //     std::cout << a << std::endl;
+        // }
+        // exit(1);
         mKernel = mOpenCLRuntime->BuildKernel("binary", kernelName, mBuildOptions);
         mMaxWorkGroupSize = static_cast<size_t>(mOpenCLRuntime->getMaxWorkGroupSize(mKernel));
     }
@@ -76,6 +81,7 @@ namespace SNN
             err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->outputCLData);
             err |= clSetKernelArg(mKernel, idx++, sizeof(shape), &shape);
             err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &fullCount);
+            err |= clSetKernelArg(mKernel, idx++, sizeof(int), &activationType);
             oclCheckError(err, CL_SUCCESS);
         }
         std::string kernelName = "binary";

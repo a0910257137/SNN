@@ -31,7 +31,21 @@ namespace SNN
         }
         if ((this->err) != CL_SUCCESS)
             printf("ERROR:  %i in clCreateCommandQueue call !!!\n\n", (this->err));
-        bool status = OpenCLRuntime::BuildProgramMaps();
+        // std::string pathDir = "../backend/opencl/execution/cl/";
+        // std::string pathDir = "../backend/opencl/execution/bin/";
+        std::string pathDir;
+        bool status;
+        if (isBinarySource)
+        {
+            pathDir = "../backend/opencl/execution/bin/";
+            status = BuildBinaryProgramMaps(pathDir);
+        }
+        else
+        {
+            pathDir = "../backend/opencl/execution/cl/";
+            status = BuildProgramMaps(pathDir);
+        }
+        // bool status = BuildBinaryProgramMaps(pathDir);
         oclCheckError(status, true);
         cl_device_fp_config fp_config;
         clGetDeviceInfo(this->_device[0], CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config), &fp_config, 0);
@@ -52,16 +66,56 @@ namespace SNN
         mSourceMaps.clear();
         mBuiltProgramMaps.clear();
     }
-    bool OpenCLRuntime::BuildProgramMaps()
+
+    bool OpenCLRuntime::BuildBinaryProgramMaps(std::string &folder)
+    {
+        printf("INFO: Fetch pre-built binary opencl programs from %s\n", "backend/opencl/execution/bin/*.bin");
+        DIR *dir;
+        FILE *ptr;
+        struct dirent *ent;
+        std::string b = ".", bb = "..", saved_name;
+        char *source_path;
+        char *binary;
+        unsigned long length;
+        cl_int binary_status;
+        cl_program program;
+        if ((dir = opendir(folder.c_str())) != NULL)
+        {
+            while ((ent = readdir(dir)) != NULL)
+            {
+                std::string file_name = ent->d_name;
+                if (file_name == b || file_name == bb)
+                    continue;
+                char *filae_path = (char *)malloc(strlen(folder.c_str()) + strlen(file_name.c_str()) + 1);
+                strcpy(filae_path, folder.c_str());
+                strcat(filae_path, file_name.c_str());
+                binary = common_read_file(filae_path, &length);
+                saved_name = remove_extension(file_name);
+                // program = clCreateProgramWithBinary(_GPUContext, 1, _device, &length,
+                //                                     (const unsigned char **)&binary, &binary_status, &err);
+                // std::cout << err << std::endl;
+                oclCheckError(err, CL_SUCCESS);
+                mSourceMaps[saved_name] = std::make_tuple(binary, length);
+                free(filae_path);
+            }
+            closedir(dir);
+        }
+        else
+        {
+            perror("");
+        }
+        // exit(1);
+        return true;
+    }
+    bool OpenCLRuntime::BuildProgramMaps(std::string &folder)
     {
         printf("INFO: Fetch opencl programs from %s\n", "backend/opencl/execution/cl/*.cl");
         DIR *dir;
         struct dirent *ent;
-        int count = 0;
-        std::string b = ".", bb = "..";
+        std::string b = ".", bb = "..", saved_name;
         size_t program_length;
         char *source_path, *source;
-        if ((dir = opendir("../backend/opencl/execution/cl/")) != NULL)
+        if ((dir = opendir(folder.c_str())) != NULL)
         {
             while ((ent = readdir(dir)) != NULL)
             {
@@ -71,16 +125,8 @@ namespace SNN
                 source_path = shrFindFilePath(ent->d_name);
                 oclCheckError(source_path != NULL, shrTRUE);
                 source = oclLoadProgSource(source_path, "", &program_length);
-                mSourceMaps[file_name] = std::make_tuple(source, program_length);
-                // mSourceMaps.insert(std::make_pair(file_name, source));
-                // auto programRaw = clCreateProgramWithSource(this->_GPUContext, 1, (const char **)&source, &program_length, &err);
-                // oclCheckError(err, CL_SUCCESS);
-                // if (!programRaw)
-                // {
-                //     printf("Can't load %s  load program\n", source_path);
-                //     return false;
-                // }
-                // mProgramSourceMaps.insert(std::make_pair(std::make_tuple(file_name, ""), std::make_pair(programRaw, programRaw)));
+                saved_name = remove_extension(file_name);
+                mSourceMaps[saved_name] = std::make_tuple(source, static_cast<unsigned long>(program_length));
             }
             closedir(dir);
         }
@@ -90,21 +136,7 @@ namespace SNN
         }
         return true;
     }
-    bool OpenCLRuntime::LoadProgram(const std::string &cl_name, cl_program &program)
-    {
-        // auto buildProgramInter = mProgramMaps.find(cl_name);
 
-        // if (buildProgramInter != mProgramMaps.end())
-        // {
-        //     program = buildProgramInter->second;
-        //     return true;
-        // }
-        // else
-        // {
-        //     printf("ERROR: Can't load program %s source \n", cl_name.c_str());
-        //     return false;
-        // }
-    }
     cl_kernel OpenCLRuntime::BuildKernel(const std::string &programName, const std::string &kernelName, const std::set<std::string> &buildOptions)
     {
 
@@ -120,7 +152,6 @@ namespace SNN
         for (auto &option : buildOptions)
             buildOptionsStr += " " + option;
         buildOptionsStr += mDefaultBuildParams;
-
         cl_program program;
         std::tuple<std::string, std::string> key;
         key = std::make_pair(programName + "_" + kernelName, buildOptionsStr);
@@ -134,10 +165,20 @@ namespace SNN
         }
         else
         {
-            std::tuple<char *, size_t> source_infos = mSourceMaps[programName + ".cl"];
+            std::tuple<char *, unsigned long> source_infos = mSourceMaps[programName];
             source = std::get<0>(source_infos);
-            size_t length = std::get<1>(source_infos);
-            program = clCreateProgramWithSource(this->_GPUContext, 1, (const char **)&source, &length, &err);
+            unsigned long length = std::get<1>(source_infos);
+            if (isBinarySource)
+            {
+                cl_int binary_status;
+                // std::cout << programName << std::endl;
+                // std::cout << length << std::endl;
+                program = clCreateProgramWithBinary(_GPUContext, 1, _device, &length,
+                                                    (const unsigned char **)&source, &binary_status, &err);
+                oclCheckError(err, CL_SUCCESS);
+            }
+            else
+                program = clCreateProgramWithSource(this->_GPUContext, 1, (const char **)&source, &length, &err);
             oclCheckError(err, CL_SUCCESS);
             if (!program)
             {
@@ -146,12 +187,11 @@ namespace SNN
             }
             err = clBuildProgram(program, this->_num_devices, this->_device, buildOptionsStr.c_str(), NULL, NULL);
             oclCheckError(err, CL_SUCCESS);
+            // exit(1);
             mBuiltProgramMaps.emplace(std::make_pair(key, program));
         }
-
         kernel = clCreateKernel(program, kernelName.c_str(), &err);
         oclCheckError(err, CL_SUCCESS);
-
         return kernel;
     }
 
@@ -212,6 +252,7 @@ namespace SNN
                                                                             const cl_kernel &mKernel)
     {
         float min_cost = INFINITY;
+        // std::cout << kernelName << std::endl;
         auto maxWorkItemSizes = runtime->getMaxWorkItemSizes();
         cl_command_queue *commandQueue = runtime->GetCommandQue();
         size_t lws[] = {1, 1};
@@ -235,30 +276,16 @@ namespace SNN
                 lws[0] = 1;
                 while (lws[0] <= gws[0] && lws[0] <= 6)
                 {
-                    // don't know wy local size x ==3 will encounter error !?
-
                     if ((lws[0] <= maxWorkItemSizes[0]) && (lws[1] <= maxWorkItemSizes[1]) && (lws[0] * lws[1] <= maxWorkGroupSize))
                     {
-                        // (lws[0] != 3)
                         cl_event event = NULL;
                         size_t internalGlobalWS[2] = {1, 1};
                         for (int i = 0; i < 2; ++i)
                         {
                             internalGlobalWS[i] = ROUND_UP(gws[i], MAX((int)1, lws[i]));
                         }
-                        // if (kernelName == "conv_2d_c4h4w1" && (lws[0] == 3))
-                        //     break;
-                        // if ((internalGlobalWS[0] % 2 == 1) && (lws[0] % 2 == 1))
-                        //     break;
-                        // internalGlobalWS[0] = gws[0];
-                        // internalGlobalWS[1] = gws[1];
-                        // std::cout << "Global X: " << internalGlobalWS[0] << std::endl;
-                        // std::cout << "Global Y: " << internalGlobalWS[1] << std::endl;
-                        // std::cout << "Local X: " << lws[0] << std::endl;
-                        // std::cout << "Local Y: " << lws[1] << std::endl;
-                        // if ((gws[0] % lws[0] != 0) || (gws[1] % lws[1] != 0))
-                        //     break;
                         err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 2, NULL, internalGlobalWS, lws, 0, nullptr, &event);
+                        oclCheckError(err, CL_SUCCESS);
                         float cost_time = (float)this->GetCostTime(&event);
                         if (cost_time < min_cost)
                         {
@@ -287,7 +314,6 @@ namespace SNN
             lws_prefer[1] = 0;
             min_cost = 0.0f;
         }
-
         if (runtime->GetCLTuneLevel() != None)
         {
             cl_event event;

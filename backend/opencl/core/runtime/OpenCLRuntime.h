@@ -1,3 +1,4 @@
+// #pragma once
 #ifndef OPENCLRUNTIME_H
 #define OPENCLRUNTIME_H
 #include <string>
@@ -11,9 +12,8 @@
 #include "include/SNN/macro.h"
 #include <iostream>
 #include <limits.h>
-#include <utility>
 #include <vector>
-#include <functional>
+#include "misc/utils.h"
 #define NQUEUES 1
 
 namespace SNN
@@ -103,16 +103,15 @@ namespace SNN
         cl_command_queue _commandQueue[NQUEUES];
 
     private:
-        bool LoadProgram(const std::string &cl_name, cl_program &program);
-        bool BuildProgramMaps();
+        bool BuildProgramMaps(std::string &pathDir);
+        bool BuildBinaryProgramMaps(std::string &folder);
 
     private:
+        bool isBinarySource = false;
         bool isSetWorkGroupAttribute = false;
         std::string mDefaultBuildParams = " -cl-mad-enable";
-        // std::string mDefaultBuildParams = " ";
-        // std::map<std::string, cl_program> mProgramMaps;
         std::map<std::tuple<std::string, std::string>, cl_program> mBuiltProgramMaps;
-        std::map<std::string, std::tuple<char *, size_t>> mSourceMaps;
+        std::map<std::string, std::tuple<char *, unsigned long>> mSourceMaps;
         cl_platform_id platform;
         cl_event event = NULL;
         uint32_t mMaxMemAllocSize;

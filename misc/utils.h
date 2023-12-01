@@ -12,13 +12,14 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <dirent.h>
-void readVideo(cv::Mat src, float *dts, float *resizedRatios);
+void readVideo(cv::Mat &src, float *dts, float *resizedRatios, bool isCVResize);
 void readImage(std::string &filename, float *output, float *resizedRatios);
 static inline int argmax(std::vector<float> *);
 float diff_ms(struct timespec *t1, struct timespec *t0);
 void print(int);
 std::string base_name(std::string const &path);
 std::string remove_extension(std::string const &filename);
+char *common_read_file(const char *path, unsigned long *length_out);
 std::tuple<int, float *> _readBinary(std::string &file_name, FILE *ptr);
 void GetWeights(std::string &path, std::map<std::string, std::tuple<int, float *>> &headWeights);
 std::string FormatZeros(float value);

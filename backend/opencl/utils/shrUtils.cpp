@@ -588,7 +588,7 @@ char *shrFindFilePath(const char *filename)
     const char *searchPath[] =
         {
             "../backend/opencl/execution/cl/", // opencl/execution/cl subdir
-            "./backend/opencl/execution/cl/",  // opencl/execution/cl subdir
+            "./backend/opencl/execution/cl/", // opencl/execution/cl subdir
 
         };
 
@@ -598,6 +598,7 @@ char *shrFindFilePath(const char *filename)
         std::string path(searchPath[i]);
         size_t executable_name_pos = path.find("<executable_name>");
         // Test if the file exists
+
         path.append(filename);
         std::fstream fh(path.c_str(), std::fstream::in);
         if (fh.good())
@@ -610,6 +611,7 @@ char *shrFindFilePath(const char *filename)
 #else
             strcpy(file_path, path.c_str());
 #endif
+
             return file_path;
         }
     }

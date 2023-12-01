@@ -1,5 +1,5 @@
 
-set(TENSORFLOW_SOURCE_DIR "/home2/anders/proj_c/side_proj/tensorflow")
+set(TENSORFLOW_SOURCE_DIR "/aidata/anders/thirdy_party/tensorflow")
 link_directories(
                 ${TENSORFLOW_SOURCE_DIR})
 add_subdirectory(

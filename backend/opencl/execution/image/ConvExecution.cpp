@@ -10,7 +10,6 @@ namespace SNN
     {
         this->mbackend = mbackend;
         mConvCommon = std::make_shared<ConvolutionCommon>();
-
         mStrides = {tensor->stride(0), tensor->stride(1)};
         mDilations = {tensor->dilation(0), tensor->dilation(1)};
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
@@ -47,11 +46,9 @@ namespace SNN
         std::string buildOption = "";
         if (mOpenCLRuntime->isWeightCpuTransHalf() == false)
         {
-            buildOption = "-DBUFFER_INP_FP32123";
+            buildOption = "-DBUFFER_INP_FP32";
         }
-
         bool status = this->mImageConvert->ConvertBufferToImage(tensor, CONV2D_FILTER, false, buildOption);
-
         // create kernel
         if (mStrides[0] == 1 && mStrides[1] && mDilations[0] && mDilations[1])
         {
@@ -66,9 +63,6 @@ namespace SNN
             mBuildOptions.emplace("-DSIGMOID");
         if (mWeightUseBuffer)
             mBuildOptions.emplace("-DUSE_BUFFER");
-        // for (auto &m : mBuildOptions)
-        //     std::cout << m << std::endl;
-        // exit(1);
         mKernel = mOpenCLRuntime->BuildKernel("conv_2d", kernelName, mBuildOptions);
         mMaxWorkGroupSize = static_cast<size_t>(mOpenCLRuntime->getMaxWorkGroupSize(mKernel));
     }
@@ -109,7 +103,6 @@ namespace SNN
         {
             SNN_ASSERT(true);
         }
-        // exit(1);
         std::string info = std::to_string(inputChannels) + "_" + std::to_string(kernelShape[0]) + "_" + std::to_string(kernelShape[1]) + "_" + std::to_string(mStrides[0]) + "_" + std::to_string(mStrides[1]) + "_" + std::to_string(mDilations[0]) + "_" + std::to_string(mDilations[1]);
         if (kernelShape[0] == kernelShape[1] && kernelShape[0] == 1 && mPaddings[0] == 0 && mPaddings[1] == 0)
         {
@@ -160,7 +153,6 @@ namespace SNN
                 idx = 0;
                 int inputImageShape[2] = {inputHeight, inputWidth};
                 int outputImageShape[2] = {outputShape.at(1), outputShape.at(2)};
-
                 err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
                 err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
                 err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData);
@@ -196,6 +188,7 @@ namespace SNN
             for (int knl_idx = 0; knl_idx < total_kernel; knl_idx++)
             {
                 idx = 0;
+                // std::cout << kernelName[knl_idx] << std::endl;
                 kernel[knl_idx] = mOpenCLRuntime->BuildKernel("conv_2d", kernelName[knl_idx], mBuildOptions);
                 mMaxWorkGroupSize = static_cast<size_t>(mOpenCLRuntime->getMaxWorkGroupSize(kernel[knl_idx]));
                 globalWorkSize[knl_idx] = {static_cast<size_t>(UP_DIV(outputShape.at(3), itemC[knl_idx]) * UP_DIV(outputShape.at(2), itemW[knl_idx])), static_cast<size_t>(outputShape.at(0) * UP_DIV(outputShape.at(1), itemH[knl_idx]))};
@@ -224,6 +217,7 @@ namespace SNN
                 int height_blk = UP_DIV(outputShape[1], itemH[knl_idx]);
                 err |= clSetKernelArg(kernel[knl_idx], idx++, sizeof(int), &height_blk);
                 oclCheckError(err, CL_SUCCESS);
+                // exit(1);
                 std::pair<std::vector<size_t>, float_t> retTune;
                 retTune = mOpenCLRuntime->localWS2DDefault(globalWorkSize[knl_idx], mMaxWorkGroupSize, mOpenCLRuntime, kernelName[knl_idx], kernel[knl_idx]);
                 err |= clFlush(commandQueue[0]);
