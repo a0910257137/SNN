@@ -12,8 +12,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <dirent.h>
-void readVideo(cv::Mat &src, float *dts, float *resizedRatios, bool isCVResize);
-void readImage(std::string &filename, float *output, float *resizedRatios);
+void readVideo(cv::Mat &src, float *resizedRatios, bool isCVResize);
+void readImage(cv::Mat &src, float *resizedRatios);
 static inline int argmax(std::vector<float> *);
 float diff_ms(struct timespec *t1, struct timespec *t0);
 void print(int);

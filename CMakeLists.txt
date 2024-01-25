@@ -41,6 +41,7 @@ find_package(OpenCV REQUIRED)
 link_directories(
                 ${GOOGLE_INCLUDE_DIR}
                 ${SNN_INCLUDE_DIR})
+
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/misc)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/core)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/backend)
@@ -58,5 +59,6 @@ target_link_libraries(infer.exe
                         ${Threads_LIBS}
                         tensorflow-lite
                         CORE_LIBS
-                        UTIL_LIBS)
+                        UTIL_LIBS
+                        pthread)
                         

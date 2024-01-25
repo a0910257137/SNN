@@ -15,7 +15,6 @@
 #include <vector>
 #include "misc/utils.h"
 #define NQUEUES 1
-
 namespace SNN
 {
     enum GpuType

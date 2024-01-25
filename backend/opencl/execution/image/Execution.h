@@ -20,6 +20,9 @@ namespace SNN
         virtual ~Execution();
         virtual bool onResize(Tensor *inputs, int *input_shape, int *output_shape);
         virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &inputs, std::vector<std::shared_ptr<Tensor>> &outputs);
+        virtual bool onInputExecute(float *input_data, std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors);
+        virtual bool onOptimizedResize(std::vector<std::shared_ptr<Tensor>> &tensors);
+        virtual bool onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors);
         float *onConvert(std::shared_ptr<Tensor> &input);
 
     public:

@@ -9,8 +9,6 @@ namespace SNN
     public:
         ConvBaseExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend);
         virtual ~ConvBaseExecution() = default;
-        // protected:
-        //     cl_mem mBias;
     };
 } // SNN
 #endif // CONVBASEEXECUTION_H

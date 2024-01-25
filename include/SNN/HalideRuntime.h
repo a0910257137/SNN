@@ -142,13 +142,13 @@ typedef struct halide_buffer_t
     /** The dimensionality of the buffer. */
     int32_t dimensions;
     /**The kernel stride*/
-    std::vector<int> strides{0, 0};
+    std::vector<int> strides{0, 0, 0, 0};
     /**The kernel dilation*/
-    std::vector<int> dilations{0, 0};
+    std::vector<int> dilations{0, 0, 0, 0};
     /**The kernel weight shape*/
-    std::vector<int> kernelShapes{0, 0, 0, 0};
+    std::vector<int> kernelShapes{0, 0, 0, 0, 0, 0, 0, 0};
     /**The kernel bias shape*/
-    std::vector<int> biasShapes{0};
+    std::vector<int> biasShapes{0, 0};
     /**
      * The kernel weight and bias data bytes
      */

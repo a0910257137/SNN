@@ -1,5 +1,4 @@
 #include "PoolExecution.h"
-#include "backend/opencl/core/ImageBufferConverter.h"
 namespace SNN
 {
 
@@ -70,21 +69,21 @@ namespace SNN
         cl_int err;
         this->mOpenCLBackend->CopyToDevice(tensor.get());
         this->mOpenCLBackend->CopyToDevice(tensor.get());
-        this->inputCLData = tensor->GetDeviceInputData();
+        this->inputCLData = *tensor->GetDeviceInputData();
         int imageShape[2] = {UP_DIV(outputShape.at(3), 4) * outputShape.at(2), outputShape.at(0) * outputShape.at(1)};
-        cl_mem outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        this->outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
         tensor->SetDeviceOutputData(outputCLData);
-        this->outputCLData = tensor->GetDeviceOutputData();
+        // this->outputCLData = tensor->GetDeviceOutputData();
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[2]);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->inputCLData);
         err |= clSetKernelArg(mKernel, idx++, sizeof(inputImageShape), inputImageShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &outputHeight);
         err |= clSetKernelArg(mKernel, idx++, sizeof(paddingShape), paddingShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(strideShape), strideShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(kernelShape), kernelShape);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->outputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->outputCLData);
         oclCheckError(err, CL_SUCCESS);
         std::string kernelName = "pooling";
         mLWS = mOpenCLRuntime->localWS3DDefault(mGWS, mMaxWorkGroupSize, mOpenCLRuntime, kernelName, mKernel).first;
@@ -138,6 +137,7 @@ namespace SNN
         // ImageBufferConverter mImageConvert(mOpenCLRuntime);
         // mImageConvert.ConvertImageToNHWCBuffer(tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
         // exit(1);
+        return true;
     }
 
     std::vector<size_t> PoolExecution::PoolLocalWS(const std::vector<size_t> &gws, const size_t maxWorkGroupSize)
@@ -178,14 +178,14 @@ namespace SNN
         SNN_ASSERT(numInput == 1);
         std::shared_ptr<Tensor> input_tensor = input_tensors[0];
         std::shared_ptr<Tensor> output_tensor = output_tensors[0];
-        this->inputCLData = input_tensor->GetDeviceOutputData();
+        this->inputCLData = *input_tensor->GetDeviceOutputData();
         SNN_ASSERT(inputCLData != NULL);
         cl_int err = CL_SUCCESS;
-        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), this->inputCLData);
+        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), &this->inputCLData);
         mOpenCLRuntime->RunKernel3D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
         oclCheckError(err, CL_SUCCESS);
-        output_tensor->SetDeviceOutputData(*this->outputCLData);
-        output_tensor->SetDeviceInputData(*this->inputCLData);
+        output_tensor->SetDeviceOutputData(this->outputCLData);
+        output_tensor->SetDeviceInputData(this->inputCLData);
         bool status = true;
         if (err != CL_SUCCESS)
             return false;

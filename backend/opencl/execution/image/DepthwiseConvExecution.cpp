@@ -5,12 +5,12 @@ namespace SNN
 {
     DepthwiseConvExecution::DepthwiseConvExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend) : ConvBaseExecution(tensor, mbackend)
     {
-
         this->mbackend = mbackend;
         mConvCommon = std::make_shared<ConvolutionCommon>();
         mStrides[0] = tensor->stride(0), mStrides[1] = tensor->stride(0);
         mDilations[0] = tensor->dilation(0), mDilations[1] = tensor->dilation(1);
         std::vector<int> kernelShape = tensor->KernelShape();
+
         int kernelMultiplier = kernelShape[0],
             kernelOutputChannel = kernelShape[1],
             kernelHeight = kernelShape[2],
@@ -50,6 +50,7 @@ namespace SNN
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         SNN_ASSERT(inputShapes.size() == 1);
         const std::vector<int> &inputShape = inputShapes[0];
+        // printf("%d\n", inputShape.size());
         const std::vector<int> &outputShape = tensor->OutputShape();
         const std::vector<int> &kernelVectShape = tensor->KernelShape();
         mGWS[0] = UP_DIV(outputShape[3], 4) * UP_DIV(outputShape[2], 4);
@@ -69,19 +70,18 @@ namespace SNN
         uint32_t idx = 0;
         int imageShape[2] = {UP_DIV(outputShape.at(3), 4) * outputShape.at(2), outputShape.at(0) * outputShape.at(1)};
         // All values get from tensor and the class object inputCLData and outputCLData as
-        cl_mem outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        this->outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
         const cl_mem &mFilter = tensor->GetDeviceFilter();
         const cl_mem &mBias = tensor->GetDeviceBias();
         this->mbackend->CopyToDevice(tensor.get());
-        this->inputCLData = tensor->GetDeviceInputData();
-        tensor->SetDeviceOutputData(outputCLData);
-        this->outputCLData = tensor->GetDeviceOutputData();
+        this->inputCLData = *tensor->GetDeviceInputData();
+        tensor->SetDeviceOutputData(this->outputCLData);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->inputCLData);
         err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mFilter);
         err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &mBias);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->outputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->outputCLData);
         err |= clSetKernelArg(mKernel, idx++, sizeof(inputImageShape), inputImageShape);
         err |= clSetKernelArg(mKernel, idx++, sizeof(inputChannelBlocks), inputChannelBlocks);
         err |= clSetKernelArg(mKernel, idx++, sizeof(outputImageShape), outputImageShape);
@@ -144,7 +144,6 @@ namespace SNN
     bool DepthwiseConvExecution::onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
     {
         int numInput = input_tensors.size();
-        // std::cout << numInput << std::endl;
         SNN_ASSERT(numInput == 1);
         std::shared_ptr<Tensor> input_tensor = input_tensors[0];
         std::shared_ptr<Tensor> output_tensor = output_tensors[0];
@@ -152,14 +151,14 @@ namespace SNN
         const std::vector<int> &inputShape = inputShapes[0];
         // const std::vector<std::vector<int>> &inputShapes = output_tensor->InputShape();
         // const std::vector<int> &inputShape = inputShapes[0];
-        this->inputCLData = input_tensor->GetDeviceOutputData();
+        this->inputCLData = *(input_tensor->GetDeviceOutputData());
         SNN_ASSERT(inputCLData != NULL);
         cl_int err = CL_SUCCESS;
-        err |= clSetKernelArg(mKernel, 2, sizeof(cl_mem), this->inputCLData);
+        err |= clSetKernelArg(mKernel, 2, sizeof(cl_mem), &this->inputCLData);
         mOpenCLRuntime->RunKernel2D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
         oclCheckError(err, CL_SUCCESS);
-        output_tensor->SetDeviceOutputData(*this->outputCLData);
-        output_tensor->SetDeviceInputData(*this->inputCLData);
+        output_tensor->SetDeviceOutputData(this->outputCLData);
+        output_tensor->SetDeviceInputData(this->inputCLData);
         bool status = true;
         // printf("-------------------------------------------------------------------\n");
         // std::set<std::string> mBuildOptions;
@@ -168,14 +167,27 @@ namespace SNN
         // float *outputData = mImageConvert->ConvertImageToNHWCBuffer(output_tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
         // for (int i = 0; i < 30; i++)
         // {
-
         //     std::cout << outputData[i] << std::endl;
         // }
         // free(outputData);
         if (err != CL_SUCCESS)
             return false;
         return status;
-
-        return true;
+    }
+    bool DepthwiseConvExecution::onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
+    {
+        int numInput = input_tensors.size();
+        int numOutput = output_tensors.size();
+        this->inputCLData = *(input_tensors[numInput - 1]->GetDeviceOutputData());
+        SNN_ASSERT(inputCLData != NULL);
+        cl_int err = CL_SUCCESS;
+        err |= clSetKernelArg(mKernel, 2, sizeof(cl_mem), &this->inputCLData);
+        mOpenCLRuntime->RunKernel2D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
+        output_tensors[numOutput - 1]->SetDeviceOutputData(this->outputCLData);
+        // output_tensors[numOutput - 1]->SetDeviceInputData(this->inputCLData);
+        bool status = true;
+        if (err != CL_SUCCESS)
+            return false;
+        return status;
     }
 }

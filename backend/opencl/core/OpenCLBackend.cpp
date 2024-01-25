@@ -5,7 +5,6 @@ namespace SNN
 {
     OpenCLBackend::OpenCLBackend(bool permitFloat16)
     {
-        this->permitFloat16 = permitFloat16;
         _mCLRuntime = new OpenCLRuntime();
         this->OnSetCache();
     }
@@ -15,8 +14,12 @@ namespace SNN
     }
     bool OpenCLBackend::OnSetCache()
     {
+
         std::set<std::string> buildOptions;
-        buildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
+        if (_mCLRuntime->isSupportedFP16() == false)
+        {
+            buildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
+        }
         mNHWCBufferToImageFloat = _mCLRuntime->BuildKernel("buffer_to_image", "nhwc_buffer_to_image", buildOptions);
         mImageToNHWCBufferFloat = _mCLRuntime->BuildKernel("buffer_to_image", "image_to_nhwc_buffer", buildOptions);
         // mNCHWBufferToImageFloat = _mCLRuntime->BuildKernel("buffer_to_image", "nchw_buffer_to_image", buildOptions);
@@ -43,7 +46,6 @@ namespace SNN
         clImageFormat.image_channel_order = CL_RGBA;
         clImageFormat.image_channel_data_type = CL_FLOAT;
         const std::vector<int> outputShape = TensorShapeFormat(shape, data_format);
-
         size_t imageWidth = outputShape[2] * UP_DIV(outputShape[3], 4), imageHeight = outputShape[0] * outputShape[1];
         cl_mem outputData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageWidth, imageHeight, 0, NULL, &err);
         uint32_t outputGlobalWorkSize[2] = {static_cast<uint32_t>(UP_DIV(outputShape[3], 4) * outputShape[2]),

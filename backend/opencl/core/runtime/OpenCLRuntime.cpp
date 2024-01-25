@@ -9,6 +9,7 @@ namespace SNN
         this->err = oclGetPlatformID(&(this->platform));
         oclCheckError((this->err), CL_SUCCESS);
         this->err = clGetDeviceIDs(this->platform, CL_DEVICE_TYPE_GPU, 0, NULL, &(this->_num_devices));
+        this->_num_devices -= 1;
         printf("INFO: Fetch the # of %d device\n", this->_num_devices);
         this->_device = (cl_device_id *)malloc(this->_num_devices * sizeof(cl_device_id));
         oclCheckError(err, CL_SUCCESS);
@@ -18,6 +19,7 @@ namespace SNN
         oclCheckError(this->err, CL_SUCCESS);
         size_t DeviceBytes;
         cl_uint DeviceCount;
+
         this->err |= clGetContextInfo(this->_GPUContext, CL_CONTEXT_DEVICES, 0, nullptr, &DeviceBytes);
         DeviceCount = (cl_uint)DeviceBytes / sizeof(cl_device_id);
         if (err != CL_SUCCESS)
@@ -48,7 +50,12 @@ namespace SNN
         // bool status = BuildBinaryProgramMaps(pathDir);
         oclCheckError(status, true);
         cl_device_fp_config fp_config;
-        clGetDeviceInfo(this->_device[0], CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config), &fp_config, 0);
+        // clGetDeviceInfo(this->_device[0], CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config), &fp_config, 0);
+        // if (fp_config > 0)
+        //     printf("INFO: Device is supported single-precision\n");
+        // fp_config = -1;
+        // clGetDeviceInfo(this->_device[0], CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF, sizeof(cl_device_fp_config), &fp_config, 0);
+        clGetDeviceInfo(this->_device[0], CL_DEVICE_HALF_FP_CONFIG, sizeof(cl_device_fp_config), &fp_config, 0);
         mIsDeviceSupportedFP16 = fp_config > 0;
         if (mIsDeviceSupportedFP16)
             printf("INFO: Device is supported half-precision\n");
@@ -139,10 +146,9 @@ namespace SNN
 
     cl_kernel OpenCLRuntime::BuildKernel(const std::string &programName, const std::string &kernelName, const std::set<std::string> &buildOptions)
     {
-
         std::string buildOptionsStr;
         if (mIsSupportedFP16)
-            buildOptionsStr = "-DFLOAT=half -DFLOAT2=half2 -DFLOAT4=half4 -DFLOAT8=half8 -DFLOAT16=half16 -DRI_F=read_imageh -DWI_F=write_imageh -DCONVERT_FLOAT4=convert_half4 -DMNN_SUPPORT_FP16";
+            buildOptionsStr = "-DFLOAT=half -DFLOAT2=half2 -DFLOAT4=half4 -DFLOAT8=half8 -DFLOAT16=half16 -DRI_F=read_imageh -DWI_F=write_imageh -DCONVERT_FLOAT4=convert_half4 -DSNN_SUPPORT_FP16";
         else
             buildOptionsStr = "-DFLOAT=float  -DFLOAT2=float2 -DFLOAT4=float4 -DFLOAT8=float8 -DRI_F=read_imagef -DFLOAT16=float16 -DWI_F=write_imagef -DCONVERT_FLOAT4=convert_float4";
         if (isSetWorkGroupAttribute)
@@ -151,6 +157,7 @@ namespace SNN
             buildOptionsStr += " -DSET_ATTRIBUTE=false";
         for (auto &option : buildOptions)
             buildOptionsStr += " " + option;
+
         buildOptionsStr += mDefaultBuildParams;
         cl_program program;
         std::tuple<std::string, std::string> key;
@@ -171,7 +178,7 @@ namespace SNN
             if (isBinarySource)
             {
                 cl_int binary_status;
-                // std::cout << programName << std::endl;
+
                 // std::cout << length << std::endl;
                 program = clCreateProgramWithBinary(_GPUContext, 1, _device, &length,
                                                     (const unsigned char **)&source, &binary_status, &err);
@@ -185,9 +192,10 @@ namespace SNN
                 printf("Can't load %s  load program\n", programName.c_str());
                 exit(1);
             }
+            size_t len = 0;
+            cl_int ret = CL_SUCCESS;
             err = clBuildProgram(program, this->_num_devices, this->_device, buildOptionsStr.c_str(), NULL, NULL);
             oclCheckError(err, CL_SUCCESS);
-            // exit(1);
             mBuiltProgramMaps.emplace(std::make_pair(key, program));
         }
         kernel = clCreateKernel(program, kernelName.c_str(), &err);
@@ -233,9 +241,8 @@ namespace SNN
     }
     float OpenCLRuntime::GetCostTime(const cl_event *event)
     {
+
         cl_int err = clWaitForEvents(1, event);
-        // if (err != 0)
-        //     return INFINITY;
         oclCheckError(err, CL_SUCCESS);
         cl_ulong time_start, time_end;
         float total_time;
@@ -267,7 +274,6 @@ namespace SNN
         // {
         //     printf("max_work_item_size_of_work_group_dim %zu=%zu\n", i, maxWorkItemSizes[i]);
         // }
-        // exit(1);
         err = 0;
         if (runtime->GetCLTuneLevel() == Fast)
         {
@@ -448,8 +454,6 @@ namespace SNN
         {
             tunedLws.insert(std::make_pair(info, std::make_pair(lws_prefer, min_cost)));
         }
-        // printf("INFO: Find Best local work item for x %lu \n", lws[0]);
-        // printf("INFO: Find Best local work item for y %lu \n", lws[1]);
         return std::make_pair(lws_prefer, min_cost);
     }
     void OpenCLRuntime::RunKernel2D(const cl_kernel &kernel, const std::vector<size_t> &gws, const std::vector<size_t> &lws,
@@ -470,7 +474,15 @@ namespace SNN
         else
         {
             size_t internalLocalWS[2] = {lws[0], lws[1]};
+            // cl_event event;
             err |= clEnqueueNDRangeKernel(commandQueue[0], kernel, 2, NULL, internalGlobalWS, internalLocalWS, 0, NULL, NULL);
+            // cl_int err = clWaitForEvents(1, &event);
+            // cl_ulong time_start, time_end;
+            // float total_time;
+            // clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+            // clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+            // total_time = (time_end - time_start) / 1000000.0f;
+            // printf("%f\n", total_time);
         }
         oclCheckError(err, CL_SUCCESS);
         unsigned int num_flush = runtime->GetQueueNum();
@@ -498,7 +510,15 @@ namespace SNN
         else
         {
             size_t internalLocalWS[3] = {lws[0], lws[1], lws[2]};
+            // cl_event event;
             err |= clEnqueueNDRangeKernel(commandQueue[0], kernel, 3, NULL, internalGlobalWS, internalLocalWS, 0, NULL, NULL);
+            // cl_int err = clWaitForEvents(1, &event);
+            // cl_ulong time_start, time_end;
+            // float total_time;
+            // clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+            // clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+            // total_time = (time_end - time_start) / 1000000.0f;
+            // printf("%f\n", total_time);
         }
         oclCheckError(err, CL_SUCCESS);
         unsigned int num_flush = runtime->GetQueueNum();

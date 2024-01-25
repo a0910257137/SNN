@@ -19,10 +19,8 @@ target_link_libraries(CORE_LIBS
           tensorflow-lite
           UTIL_LIBS
           OCL_LIBS
-          Backend_LIBS)
-# message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
-# message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
-# message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+          Backend_LIBS
+          ${OpenCV_LIBS})
 target_include_directories(CORE_LIBS
       PUBLIC
           ${CMAKE_SOURCE_DIR})

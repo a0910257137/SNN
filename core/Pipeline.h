@@ -19,6 +19,7 @@ namespace SNN
 {
     class Pipeline : public Model
     {
+
     public:
         Pipeline(ModelConfig &model_cfg, BackendConfig &backend_cfg);
         ~Pipeline();

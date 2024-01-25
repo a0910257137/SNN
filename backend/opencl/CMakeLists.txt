@@ -30,9 +30,11 @@ add_definitions(-DCL_TARGET_OPENCL_VERSION=300)
 # message(STATUS ${OpenCL_SRC})
 message(STATUS "Get opencl library from local third part" ${OPENCL_INCLUDE_DIR})
 add_library(OCL_LIBS SHARED ${OpenCL_SRC})
+find_package(OpenCV REQUIRED)
 target_link_libraries(OCL_LIBS
-    PRIVATE 
-        OpenCL)
+        PRIVATE 
+            OpenCL
+            ${OpenCV_LIBS})
 target_include_directories(OCL_LIBS  
       PUBLIC
             ${OPENCL_INCLUDE_DIR}

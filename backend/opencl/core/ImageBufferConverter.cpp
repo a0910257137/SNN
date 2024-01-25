@@ -57,11 +57,6 @@ namespace SNN
         const std::vector<uint8_t> &ptrIndex = tensor->GetMemoryPtrIndex();
         std::pair<float *, float *> &weight_bias = mainMemory->at(ptrIndex[0]);
         float *weightData = weight_bias.first, *biasData = weight_bias.second;
-        // for (int i = 0; i < 30; i++)
-        // {
-        //     std::cout << weightData[i] << std::endl;
-        // }
-        // exit(1);
         const int weight_bytes = tensor->weight_bytes();
         int elementSize = kernelShape[0] * kernelShape[1] * kernelShape[2] * kernelShape[3], buffer_size;
         // const int bias_bytes = tensor->bias_bytes();
@@ -91,6 +86,7 @@ namespace SNN
         }
         // deal with opencl
         cl_mem tmpBuffer;
+
         err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(int), &gws[0]);
         err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(int), &gws[1]);
         oclCheckError(err, CL_SUCCESS);
@@ -197,6 +193,7 @@ namespace SNN
         cl_command_queue *commandQueue = runtime->GetCommandQue();
         const cl_mem *mDeviceImage = tensor->GetDeviceOutputData();
         float *h_data = (float *)malloc(buffer_sizes);
+
         cl_mem mhostBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_WRITE, buffer_sizes, NULL, &err);
         oclCheckError(err, CL_SUCCESS);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &in_gws[0]);

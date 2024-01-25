@@ -1,6 +1,6 @@
 #include "utils.h"
 
-void readVideo(cv::Mat &src, float *dts, float *resizedRatios, bool isCVResize)
+void readVideo(cv::Mat &src, float *resizedRatios, bool isCVResize)
 {
     resizedRatios[1] = (float)src.rows / 320.0f;
     resizedRatios[0] = (float)src.cols / 320.0f;
@@ -10,22 +10,15 @@ void readVideo(cv::Mat &src, float *dts, float *resizedRatios, bool isCVResize)
         // src.convertTo(src, CV_32F, 1.0 / 255, 0);
         src.convertTo(src, CV_32FC3);
     }
-    cv::cvtColor(src, src, CV_BGR2RGB);
-    // int bytes = src.cols * src.rows * 3 * sizeof(float);
-    // memcpy(dts, (float *)src.data, bytes);
+    cv::cvtColor(src, src, cv::COLOR_BGR2RGB);
 }
 
-void readImage(std::string &filename, float *output, float *resizedRatios)
+void readImage(cv::Mat &src, float *resizedRatios)
 {
-    cv::Mat frame = cv::imread(filename);
-    resizedRatios[1] = (float)frame.rows / 320.0f;
-    resizedRatios[0] = (float)frame.cols / 320.0f;
-    // cv::resize(frame, frame, cv::Size(320, 320), 0.5, 0.5, cv::INTER_AREA);
-    cv::cvtColor(frame, frame, CV_BGR2RGB);
-    frame.convertTo(frame, CV_32F, 1.0 / 255, 0);
-    int bytes = frame.cols * frame.rows * 3 * sizeof(float);
-    output = (float *)frame.data;
-    // memcpy(output, (float *)frame.data, bytes);
+    resizedRatios[1] = (float)src.rows / 320.0f;
+    resizedRatios[0] = (float)src.cols / 320.0f;
+    cv::cvtColor(src, src, cv::COLOR_BGR2RGB);
+    src.convertTo(src, CV_32FC3);
 }
 void print(int n)
 {
@@ -110,15 +103,15 @@ char *common_read_file(const char *path, unsigned long *length_out)
 
 std::tuple<int, float *> _readBinary(std::string &file_name, FILE *ptr)
 {
-    std::tuple<int, float *> dtaa;
+    std::tuple<int, float *> data;
     ptr = fopen(file_name.c_str(), "rb");
     fseek(ptr, 0, SEEK_END);
     int size = ftell(ptr);
     float *buffer = (float *)malloc(size);
     fseek(ptr, 0, SEEK_SET);
     fread(buffer, size, 1, ptr);
-    dtaa = std::make_tuple(size / sizeof(float), buffer);
-    return dtaa;
+    data = std::make_tuple(size / sizeof(float), buffer);
+    return data;
 }
 void GetWeights(std::string &path, std::map<std::string, std::tuple<int, float *>> &headWeights)
 {

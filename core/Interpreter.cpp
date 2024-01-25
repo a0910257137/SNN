@@ -2,9 +2,10 @@
 // #include <inttypes.h>
 namespace SNN
 {
-    Interpreter::Interpreter(std::string model_path)
+    Interpreter::Interpreter(int batchSize, std::string model_path)
     {
         threads = -1;
+        this->batchSize = batchSize;
         model = tflite::FlatBufferModel::BuildFromFile(model_path.c_str());
         TFLITE_MINIMAL_CHECK(model != nullptr);
         tflite::ops::builtin::BuiltinOpResolver resolver;
@@ -43,14 +44,20 @@ namespace SNN
             std::vector<uint32_t> inputShape(4, 0);
             for (j = 0; j < 4; ++j)
             {
-                inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                if (j == 0)
+                    inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                else
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
             }
             tensor->SetInputShape(inputShape);
 
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
             ptr_size = (node.inputs->size - 1) / 2;
 
@@ -62,11 +69,6 @@ namespace SNN
                 tensor->SetWeightBytes(static_cast<uint32_t>(weightBytes));
                 float *src = tflite_tensor->data.f;
                 weight_bias.first = (float *)malloc(weightBytes);
-                // for (int k = 0; k < 30; k++)
-                // {
-                //     cout << src[k] << endl;
-                // }
-                // exit(1);
                 // MHWI->MIHW
                 Transpose(src, weight_bias.first, FILTER_FORMAT_MHWI, FILTER_FORMAT_MIHW, tflite_tensor->dims->data);
                 tensor->SetKernelShape(0, tflite_tensor->dims->data[0]);
@@ -79,11 +81,6 @@ namespace SNN
                 biasBytes = dimSizes * sizeof(float);
                 weight_bias.second = (float *)malloc(biasBytes);
                 memcpy(weight_bias.second, tflite_tensor->data.f, biasBytes);
-                // for (int k = 0; k < 30; k++)
-                // {
-                //     cout << weight_bias.second[k] << endl;
-                // }
-                // exit(1);
                 tensor->SetBiasShape(0, tflite_tensor->dims->data[0]);
             }
         }
@@ -102,13 +99,20 @@ namespace SNN
             std::vector<uint32_t> inputShape(4, 0);
             for (j = 0; j < 4; ++j)
             {
-                inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                if (j == 0)
+                    inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                else
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
             }
             tensor->SetInputShape(inputShape);
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                // printf("%d\n", tflite_tensor->dims->data[j]);
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
             ptr_size = (node.inputs->size - 1) / 2;
             for (i = 0; i < ptr_size; i++)
@@ -147,8 +151,10 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
-                    // std::cout << inputShape[j] << std::endl;
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
@@ -156,8 +162,10 @@ namespace SNN
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_AVERAGE_POOL_2D)
@@ -186,7 +194,10 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
@@ -194,7 +205,10 @@ namespace SNN
             for (j = 0; j < 4; ++j)
             {
 
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_MAX_POOL_2D)
@@ -223,15 +237,20 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_CONCATENATION)
@@ -246,15 +265,20 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_ADD)
@@ -268,8 +292,10 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
-                    // std::cout << inputShape[j] << std::endl;
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
@@ -277,7 +303,10 @@ namespace SNN
             for (j = 0; j < 4; ++j)
             {
 
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_SUB)
@@ -291,15 +320,20 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_MUL)
@@ -313,15 +347,20 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_DIV)
@@ -335,22 +374,26 @@ namespace SNN
                 std::vector<uint32_t> inputShape(4, 0);
                 for (j = 0; j < 4; ++j)
                 {
-                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                    if (j == 0)
+                        inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                    else
+                        inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
                 }
                 tensor->SetInputShape(inputShape);
             }
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
         }
         else if (tflite_op == tflite::BuiltinOperator_TRANSPOSE_CONV)
         {
             TfLiteTransposeConvParams *tflite_params = (TfLiteTransposeConvParams *)node.builtin_data;
             // Default: transpose conv no bias data
-
             tensor->SetOpType(DECONV2D);
             tensor->SetStride(0, tflite_params->stride_height);
             tensor->SetStride(1, tflite_params->stride_width);
@@ -360,14 +403,19 @@ namespace SNN
             std::vector<uint32_t> inputShape(4, 0);
             for (j = 0; j < 4; ++j)
             {
-                inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
+                if (j == 0)
+                    inputShape[j] = static_cast<uint32_t>(this->batchSize);
+                else
+                    inputShape[j] = static_cast<uint32_t>(tflite_tensor->dims->data[j]);
             }
             tensor->SetInputShape(inputShape);
-
             tflite_tensor = this->tflite_interpreter->tensor(node.outputs->data[0]);
             for (j = 0; j < 4; ++j)
             {
-                tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
+                if (j == 0)
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(this->batchSize));
+                else
+                    tensor->SetOutputShape(j, static_cast<uint32_t>(tflite_tensor->dims->data[j]));
             }
             ptr_size = (node.inputs->size - 1) / 2;
             tflite_tensor = this->tflite_interpreter->tensor(node.inputs->data[1]);
@@ -406,6 +454,7 @@ namespace SNN
         // for predefine constructor
         mainMemory->reserve(numOperators);
         GraphNodes.reserve(numOperators);
+
         printf("INFO: Start converting Tf-Lite graph to SNN graph ... \n");
         std::map<int, int> tflite_infos;
         this->GetInputTensor(GraphNodes, modelMaps);
@@ -423,7 +472,6 @@ namespace SNN
             tflite_op = static_cast<tflite::BuiltinOperator>(registration.builtin_code);
             for (j = 0; j < outputIndexSize; j++)
             {
-                // cout << tflite_interpreter->outputs()[j] << endl;
                 if (tflite_interpreter->outputs()[j] == node.outputs->data[0])
                 {
                     outputIndex[k] = tensor_index + 1;
@@ -442,14 +490,11 @@ namespace SNN
                 merged_counts++;
                 continue;
             }
-
-            // new tensor for snn graph
             std::shared_ptr<Tensor> tensor(new Tensor()); // default tensor
             tensor->SetOpName(op_name);
             tflite_infos[node.outputs->data[0]] = tensor_index;
             if (tflite_op == tflite::BuiltinOperator_CONCATENATION ||
                 tflite_op == tflite::BuiltinOperator_ADD ||
-                tflite_op == tflite::BuiltinOperator_MUL ||
                 tflite_op == tflite::BuiltinOperator_DIV ||
                 tflite_op == tflite::BuiltinOperator_MUL)
             {
@@ -467,6 +512,11 @@ namespace SNN
                 }
             }
             tensor->inputIndex = index;
+            if (tensor_index > 0)
+            {
+                for (j = 0; j < index.size(); j++)
+                    GraphNodes[tensor_index - 1]->outputIndex.push_back(index[j]);
+            }
             this->IdentifyOperation(tensor, mainMemory, node, tflite_op);
             GraphNodes.emplace_back(tensor);
             tensor_index++;
@@ -487,8 +537,14 @@ namespace SNN
         int i;
         for (i = 0; i < 4; ++i)
         {
-            inputShape[i] = static_cast<uint32_t>(tflite_tensor->dims->data[i]);
-            input_tensor->SetOutputShape(i, static_cast<uint32_t>(tflite_tensor->dims->data[i]));
+            if (i == 0)
+                inputShape[i] = static_cast<uint32_t>(this->batchSize);
+            else
+                inputShape[i] = static_cast<uint32_t>(tflite_tensor->dims->data[i]);
+            if (i == 0)
+                input_tensor->SetOutputShape(i, static_cast<uint32_t>(this->batchSize));
+            else
+                input_tensor->SetOutputShape(i, static_cast<uint32_t>(tflite_tensor->dims->data[i]));
         }
         int inputSize = tflite_interpreter->inputs().size();
         std::vector<int> inputIndex(inputSize, 0);

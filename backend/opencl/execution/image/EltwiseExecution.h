@@ -10,6 +10,7 @@ namespace SNN
         virtual ~EltwiseExecution() = default;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
         virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
+        virtual bool onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
 
     private:
         uint32_t RealSize(const std::vector<int> &inputShape);
@@ -19,7 +20,8 @@ namespace SNN
         OpenCLBackend *mOpenCLBackend;
 
     private:
-        cl_mem *inputCLData0, *inputCLData1, *outputCLData;
+        // cl_mem *inputCLData0, *inputCLData1, *outputCLData;
+        cl_mem inputCLData0 = NULL, inputCLData1 = NULL, outputCLData = NULL;
 
     private:
         bool mBroadCast;

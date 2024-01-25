@@ -176,15 +176,16 @@ __kernel
   const int output_channel_block_idx =
       output_channel_width_idx / output_width_4;
   const int output_width_block_idx = output_channel_width_idx % output_width_4;
+
   FLOAT4 out0 = RI_F(bias, SAMPLER, (int2)(output_channel_block_idx, 0));
   FLOAT4 out1 = out0;
   FLOAT4 out2 = out0;
   FLOAT4 out3 = out0;
-  // printf("%f\n", out0.x);
   int intput_width_idx0 = mul24(output_width_block_idx, stride_shape.y * 4);
   int intput_width_idx1 = intput_width_idx0 + stride_shape.y;
   int intput_width_idx2 = intput_width_idx1 + stride_shape.y;
   int intput_width_idx3 = intput_width_idx2 + stride_shape.y;
+  
   intput_width_idx0 =
       select(intput_width_idx0, INT_MIN, intput_width_idx0 >= input_shape.y);
   intput_width_idx1 =
@@ -635,14 +636,12 @@ __kernel
   const int output_channel_width_idx = get_global_id(0);
   const int output_batch_height_idx = get_global_id(1);
   DEAL_NON_UNIFORM_DIM2(output_channel_width_idx, output_batch_height_idx);
-
   const int out_channel_block_idx =
       (output_channel_width_idx / out_width_blocks) << 1;
   const int out_width_block_idx = output_channel_width_idx % out_width_blocks;
   const int out_height_block_idx =
       (output_batch_height_idx % out_height_blocks);
   const int out_batch_block_idx = output_batch_height_idx / out_height_blocks;
-
 #ifdef BIAS
   FLOAT4 out0 = RI_F(bias, SAMPLER, (int2)(out_channel_block_idx, 0));
   FLOAT4 out4 = RI_F(bias, SAMPLER, (int2)(out_channel_block_idx + 1, 0));
@@ -656,7 +655,6 @@ __kernel
   FLOAT4 out5 = out4;
   FLOAT4 out6 = out4;
   FLOAT4 out7 = out4;
-
   int in_width0 = mad24(out_width_block_idx, stride_shape.y, -padding_shape.y);
   int in_height0 =
       mad24(out_height_block_idx, stride_shape.x << 2, -padding_shape.x);
@@ -695,12 +693,10 @@ __kernel
         int w0 =
             select(in_width0 + ix + in_idx, -1,
                    (in_width0 + ix < 0 || in_width0 + ix >= input_shape.y));
-
         in0 = RI_F(input, SAMPLER, (int2)(w0, h0));
         in1 = RI_F(input, SAMPLER, (int2)(w0, h1));
         in2 = RI_F(input, SAMPLER, (int2)(w0, h2));
         in3 = RI_F(input, SAMPLER, (int2)(w0, h3));
-
         weights0 =
             RI_F(weights, SAMPLER, (int2)(weights_x_idx + 0, weights_y_idx));
         weights1 =
@@ -718,7 +714,6 @@ __kernel
         weights7 =
             RI_F(weights, SAMPLER,
                  (int2)(weights_x_idx + 3, weight_size + weights_y_idx++));
-
         CALCULATE_OUTPUT(0);
         CALCULATE_OUTPUT(1);
         CALCULATE_OUTPUT(2);
@@ -752,16 +747,13 @@ __kernel
   out6 = clamp(out6, (FLOAT4)0, (FLOAT4)6);
   out7 = clamp(out7, (FLOAT4)0, (FLOAT4)6);
 #endif
-
   const int out_x_base = mul24(out_channel_block_idx, output_shape.y);
   const int out_y_base = mul24(out_batch_block_idx, output_shape.x);
   int out_x_idx = out_width_block_idx;
   int out_y_idx = out_height_block_idx << 2;
-
   const int remain_y = output_shape.x - out_y_idx;
   int output_idx = out_x_base + out_x_idx;
   int output_idy = out_y_base + out_y_idx;
-
   if (remain_y >= 4) {
     WI_F(output, (int2)(output_idx, output_idy), out0);
     WI_F(output, (int2)(output_idx, output_idy + 1), out1);
@@ -777,7 +769,6 @@ __kernel
   } else if (remain_y == 1) {
     WI_F(output, (int2)(output_idx, output_idy), out0);
   }
-
   if (out_channel_block_idx + 1 >= out_channel_blocks) {
     return;
   }

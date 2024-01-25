@@ -37,9 +37,15 @@ typedef enum
     MAXIMUM = 13,
     GREATER = 14,
     LESS = 15,
-    INPUTDATA = 16,
-
+    SEPARABLE = 16,
+    INPUTDATA = 17,
 } OpTypes;
+
+typedef enum
+{
+    SandGlassBlock = 0,
+
+} MergedOpTypes;
 
 typedef enum
 {

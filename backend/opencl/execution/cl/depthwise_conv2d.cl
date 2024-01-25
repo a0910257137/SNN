@@ -20,7 +20,6 @@ __constant sampler_t SAMPLER =
   if (input1 >= global_size_dim0 || input2 >= global_size_dim1) {              \
     return;                                                                    \
   }
-
 __kernel
 #if SET_ATTRIBUTE
     __attribute__((work_group_size_hint(16, 16, 1)))
@@ -44,7 +43,6 @@ __kernel
   int ow4 = (outputShape.y + 3) / 4;
   const int outChannelBlockIdx = outChannelWidthIdx / ow4;
   const int outWidthBlockidx = outChannelWidthIdx % ow4;
-
   const int inChannelBlockIdx = outChannelBlockIdx;
 
 #ifndef NO_BIAS
@@ -160,11 +158,9 @@ __kernel
   const int outChannelWidthIdx = get_global_id(0);
   const int outHeightIdx = get_global_id(1);
   DEAL_NON_UNIFORM_DIM2(outChannelWidthIdx, outHeightIdx);
-
   int ow4 = (outputShape.y + 3) / 4;
   const int outChannelBlockIdx = outChannelWidthIdx / ow4;
   const int outWidthBlockidx = outChannelWidthIdx % ow4;
-
   const int inChannelBlockIdx = outChannelBlockIdx;
 
 #ifndef NO_BIAS
@@ -175,7 +171,6 @@ __kernel
   FLOAT4 outValue1 = outValue0;
   FLOAT4 outValue2 = outValue0;
   FLOAT4 outValue3 = outValue0;
-
   const int inWidthOffset0 =
       mad24(outWidthBlockidx, strideShape.y << 2, -paddingShape.y);
   const int inWidthOffset1 = inWidthOffset0 + strideShape.y;
@@ -183,7 +178,6 @@ __kernel
   const int inWidthOffset3 = inWidthOffset2 + strideShape.y;
   int heightIdx =
       mad24(outHeightIdx % outputShape.x, strideShape.x, -paddingShape.x);
-
   const int outBatchIdx = mul24((outHeightIdx / outputShape.x), inputShape.x);
 
   const int inCurIdx = mul24(inChannelBlockIdx, inputShape.y);
@@ -200,10 +194,8 @@ __kernel
       READ_INPUT_IMAGE(1, inWidthIdx);
       READ_INPUT_IMAGE(2, inWidthIdx);
       READ_INPUT_IMAGE(3, inWidthIdx);
-
       FLOAT4 weights =
           RI_F(filter, SAMPLER, (int2)(filterIdx, inChannelBlockIdx));
-
       outValue0 = mad(inValue0, weights, outValue0);
       outValue1 = mad(inValue1, weights, outValue1);
       outValue2 = mad(inValue2, weights, outValue2);

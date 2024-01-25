@@ -29,6 +29,19 @@ namespace SNN
         // clRetainMemObject();
         return outputData;
     }
+    bool Execution::onInputExecute(float *input_data, std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
+    {
+        return true;
+    }
+
+    bool Execution::onOptimizedResize(std::vector<std::shared_ptr<Tensor>> &tensors)
+    {
+        return true;
+    }
+    bool Execution::onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
+    {
+        return true;
+    }
     Execution::~Execution()
     {
         delete mImageConvert;

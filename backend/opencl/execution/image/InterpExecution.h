@@ -1,8 +1,6 @@
 #ifndef INTERPEXECUTION_H
 #define INTERPEXECUTION_H
 #include "Execution.h"
-// #include "include/SNN/common.h"
-
 namespace SNN
 {
     class InterpExecution : public Execution
@@ -12,12 +10,14 @@ namespace SNN
         virtual ~InterpExecution() = default;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
         virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
+        virtual bool onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
 
     private:
         OpenCLBackend *mOpenCLBackend;
 
     private:
-        cl_mem *inputCLData = nullptr, *outputCLData = nullptr;
+        // cl_mem *inputCLData = nullptr, *outputCLData = nullptr;
+        cl_mem inputCLData = NULL, outputCLData = NULL;
 
     private:
         cl_kernel mKernel;

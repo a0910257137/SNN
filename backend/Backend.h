@@ -11,7 +11,10 @@
 #include "backend/opencl/execution/image/EltwiseExecution.h"
 #include "backend/opencl/execution/image/DeconvExecution.h"
 #include "backend/opencl/execution/image/InputExecution.h"
-#include "include/SNN/Tensor.h"
+#include "backend/opencl/execution/image/StemExecution.h"
+#include "backend/opencl/execution/image/SeperableConvExecution.h"
+#include "backend/opencl/execution/image/DoubleConvExecution.h"
+#include "backend/opencl/execution/image/AddExecution.h"
 #include "include/SNN/common.h"
 namespace SNN
 {
@@ -23,8 +26,8 @@ namespace SNN
         Backend(const Backend &) = delete;
         Backend &operator=(const Backend &) = delete;
         void BuildOperation(std::shared_ptr<Tensor> tensor, std::vector<std::shared_ptr<Execution>> &netOpList);
-        void ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data, bool needResize);
         void ReleaseBuffer(std::shared_ptr<Tensor> tensor);
+        void MergedOperators(std::vector<std::shared_ptr<Tensor>> &tensors, std::vector<std::shared_ptr<Execution>> &netOpContainer);
         void *mBackend()
         {
             return _mBackend;

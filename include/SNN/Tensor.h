@@ -111,6 +111,7 @@ namespace SNN
         const std::vector<int> KernelShape() const;
         void SetMemoryPtr(int size);
         std::vector<int> inputIndex;
+        std::vector<int> outputIndex;
 
     public:
         /**

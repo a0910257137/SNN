@@ -1,5 +1,4 @@
 #include "ConcatExecution.h"
-#include "backend/opencl/core/ImageBufferConverter.h"
 namespace SNN
 {
 

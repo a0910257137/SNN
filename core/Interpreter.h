@@ -26,7 +26,7 @@ namespace SNN
     class Interpreter
     {
     public:
-        Interpreter(string model_path);
+        Interpreter(int batchSize, string model_path);
         ~Interpreter();
         Interpreter(const Interpreter &) = delete;
         Interpreter &operator=(const Interpreter &) = delete;
@@ -46,6 +46,7 @@ namespace SNN
 
     private:
         int threads;
+        int batchSize = 2;
         unique_ptr<tflite::FlatBufferModel> model;
         unique_ptr<tflite::Interpreter> tflite_interpreter;
         Backend *backend = nullptr;

@@ -17,7 +17,8 @@ namespace SNN
         OpenCLBackend *mOpenCLBackend;
 
     private:
-        cl_mem *inputCLData, *outputCLData;
+        // cl_mem *inputCLData, *outputCLData;
+        cl_mem inputCLData = NULL, outputCLData = NULL;
 
     private:
         std::vector<size_t> mGWS{1, 1, 1};

@@ -22,36 +22,6 @@ namespace SNN
     {
         delete (void *)this->_mBackend;
     }
-
-    void Backend::ConvertInputBuffer(std::shared_ptr<Tensor> tensor, float *input_data, bool needResize)
-    {
-        OpenCLBackend *mbk = (OpenCLBackend *)_mBackend;
-        OpenCLRuntime *_mCLRuntime = mbk->CLRuntime();
-        cl_context *GPUcontext = _mCLRuntime->GetGPUContext();
-        const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
-        const std::vector<int> &inputShape = inputShapes[0];
-        int N = inputShape[0];
-        int H = inputShape[1];
-        int W = inputShape[2];
-        int C = inputShape[3];
-        int buffer_sizes = N * H * W * C * sizeof(float);
-        cl_int err = 0;
-        cl_command_queue *commandQueue = _mCLRuntime->GetCommandQue();
-        cl_mem mhostBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_WRITE, buffer_sizes, NULL, &err);
-        err |= clEnqueueWriteBuffer(commandQueue[0], mhostBuffer, CL_TRUE, 0, buffer_sizes, input_data, 0, NULL, NULL);
-        oclCheckError(err, CL_SUCCESS);
-        mbk->mHostBuffer.first = buffer_sizes;
-        mbk->mHostBuffer.second = mhostBuffer;
-        cl_mem inputCLData = mbk->ConvertNHWCBufferToImage(tensor->InputShape()[0], tensor->data_format, false, false);
-        SNN_ASSERT(inputCLData != NULL);
-        if (needResize)
-        {
-            
-        }
-        tensor->SetDeviceInputData(inputCLData);
-        tensor->SetDeviceOutputData(inputCLData);
-        clReleaseMemObject(mhostBuffer);
-        }
     void Backend::BuildOperation(std::shared_ptr<Tensor> tensor, std::vector<std::shared_ptr<Execution>> &netOpContainer)
     {
         if (tensor->GetOpType() == DEPTHWISECONV2D)
@@ -123,6 +93,63 @@ namespace SNN
             std::shared_ptr<EltwiseExecution> op(new EltwiseExecution(tensor, (OpenCLBackend *)this->_mBackend, comput));
             op->onResize(tensor);
             netOpContainer.emplace_back(op);
+        }
+        else if (tensor->GetOpType() == INPUTDATA)
+        {
+            std::shared_ptr<InputExecution> op(new InputExecution(tensor, (OpenCLBackend *)this->_mBackend));
+            op->onResize(tensor);
+            netOpContainer.emplace_back(op);
+        }
+    }
+
+    void Backend::MergedOperators(std::vector<std::shared_ptr<Tensor>> &tensors, std::vector<std::shared_ptr<Execution>> &netOpContainer)
+    {
+        if (tensors.size() == 2)
+        {
+            if ((tensors[0]->GetOpType() == INPUTDATA) && ((tensors[1]->GetOpType() == CONV2D) || (tensors[1]->GetOpType() == DEPTHWISECONV2D)))
+            {
+                std::shared_ptr<StemExecution> op(new StemExecution(tensors, (OpenCLBackend *)this->_mBackend));
+                op->onOptimizedResize(tensors);
+                netOpContainer.emplace_back(op);
+            }
+            else if ((tensors[0]->GetOpType() == DEPTHWISECONV2D) && ((tensors[1]->GetOpType() == CONV2D)))
+            {
+                std::shared_ptr<SeperableConvExecution> op(new SeperableConvExecution(tensors, (OpenCLBackend *)this->_mBackend));
+                op->onOptimizedResize(tensors);
+                netOpContainer.emplace_back(op);
+            }
+        }
+        else if (tensors.size() == 3)
+        {
+            if (((tensors[0]->GetOpType() == DEPTHWISECONV2D) && ((tensors[1]->GetOpType() == DEPTHWISECONV2D) && (tensors[2]->GetOpType() == DEPTHWISECONV2D))) || ((tensors[0]->GetOpType() == DEPTHWISECONV2D) && ((tensors[1]->GetOpType() == CONV2D) && (tensors[2]->GetOpType() == CONV2D))))
+            {
+                std::shared_ptr<SeperableConvExecution> op(new SeperableConvExecution(tensors, (OpenCLBackend *)this->_mBackend));
+                op->onOptimizedResize(tensors);
+                netOpContainer.emplace_back(op);
+            }
+            else if (((tensors[0]->GetOpType() == DEPTHWISECONV2D) && (tensors[1]->GetOpType() == DEPTHWISECONV2D) && (tensors[2]->GetOpType() == ADD)) || ((tensors[0]->GetOpType() == DEPTHWISECONV2D) && (tensors[1]->GetOpType() == ADD) && (tensors[2]->GetOpType() == ADD)) || ((tensors[0]->GetOpType() == DEPTHWISECONV2D) && (tensors[1]->GetOpType() == CONV2D) && (tensors[2]->GetOpType() == ADD)))
+            {
+                std::shared_ptr<AddExecution> op(new AddExecution(tensors, (OpenCLBackend *)this->_mBackend));
+                op->onOptimizedResize(tensors);
+                netOpContainer.emplace_back(op);
+            }
+            else if ((tensors[0]->GetOpType() == RESIZE_NEAREST_NEIGHBOR) && (tensors[1]->GetOpType() == CONV2D) && (tensors[2]->GetOpType() == ADD))
+            {
+                std::shared_ptr<AddExecution> op(new AddExecution(tensors, (OpenCLBackend *)this->_mBackend));
+                op->onOptimizedResize(tensors);
+                netOpContainer.emplace_back(op);
+            }
+            else if ((tensors[0]->GetOpType() == CONV2D) && (tensors[1]->GetOpType() == CONV2D) && (tensors[2]->GetOpType() == ADD))
+            {
+                std::shared_ptr<AddExecution> op(new AddExecution(tensors, (OpenCLBackend *)this->_mBackend));
+                op->onOptimizedResize(tensors);
+                netOpContainer.emplace_back(op);
+            }
+        }
+        else
+        {
+            printf("ERROR: The fusion operator are not implemented.... !!\n");
+            exit(1);
         }
     }
     void Backend::ReleaseBuffer(std::shared_ptr<Tensor> tensor)

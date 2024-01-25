@@ -1,5 +1,4 @@
 #include "InterpExecution.h"
-#include "backend/opencl/core/ImageBufferConverter.h"
 namespace SNN
 {
     InterpExecution::InterpExecution(std::shared_ptr<Tensor> tensor, OpenCLBackend *mbackend) : Execution(mbackend)
@@ -45,17 +44,18 @@ namespace SNN
         SNN_ASSERT(outputHeight > 0 && outputWidth > 0);
         cl_int err = 0;
         uint32_t idx = 0;
+
         this->mOpenCLBackend->CopyToDevice(tensor.get());
-        this->inputCLData = tensor->GetDeviceInputData();
+        this->inputCLData = *tensor->GetDeviceInputData();
         int imageShape[2] = {UP_DIV(outputShape.at(3), 4) * outputShape.at(2), outputShape.at(0) * outputShape.at(1)};
-        cl_mem outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
-        tensor->SetDeviceOutputData(outputCLData);
-        this->outputCLData = tensor->GetDeviceOutputData();
+        this->outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        tensor->SetDeviceOutputData(this->outputCLData);
+        // this->outputCLData = tensor->GetDeviceOutputData();
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[2]);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData);
-        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->outputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->inputCLData);
+        err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->outputCLData);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mCordTransform[2]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mCordTransform[0]);
         err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mCordTransform[3]);
@@ -67,7 +67,6 @@ namespace SNN
         mLWS = mOpenCLRuntime->localWS3DDefault(mGWS, mMaxWorkGroupSize, mOpenCLRuntime, kernelName, mKernel).first;
         err |= clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
-        // exit(1);
         // Testing ..
         // int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
         // float *inpu_data = (float *)malloc(buffer_sizes);
@@ -101,7 +100,6 @@ namespace SNN
         // // printf("%d\n", inputHeight);
         // // printf("%d\n", inputWidth);
         // // printf("%d\n", outputHeight);
-        // // exit(1);
         // const size_t lws[3] = {1, 4, 4};
         // err |= clEnqueueNDRangeKernel(commandQueue[0], mKernel, 3, NULL, internalGlobalWS, lws, 0, NULL, NULL);
         // oclCheckError(err, CL_SUCCESS);
@@ -121,18 +119,49 @@ namespace SNN
         SNN_ASSERT(numInput == 1);
         std::shared_ptr<Tensor> input_tensor = input_tensors[0];
         std::shared_ptr<Tensor> output_tensor = output_tensors[0];
-        this->inputCLData = input_tensor->GetDeviceOutputData();
+        this->inputCLData = *input_tensor->GetDeviceOutputData();
         SNN_ASSERT(inputCLData != NULL);
         cl_int err = CL_SUCCESS;
-        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), this->inputCLData);
+        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), &this->inputCLData);
         mOpenCLRuntime->RunKernel3D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
         oclCheckError(err, CL_SUCCESS);
-        output_tensor->SetDeviceOutputData(*this->outputCLData);
-        output_tensor->SetDeviceInputData(*this->inputCLData);
+        output_tensor->SetDeviceOutputData(this->outputCLData);
+        output_tensor->SetDeviceInputData(this->inputCLData);
         bool status = true;
         if (err != CL_SUCCESS)
             return false;
         return status;
     }
-
+    bool InterpExecution::onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
+    {
+        int numInput = input_tensors.size();
+        int numOutput = output_tensors.size();
+        this->inputCLData = *(input_tensors[numInput - 1]->GetDeviceOutputData());
+        SNN_ASSERT(inputCLData != NULL);
+        cl_int err = CL_SUCCESS;
+        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), &this->inputCLData);
+        mOpenCLRuntime->RunKernel2D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
+        output_tensors[numOutput - 1]->SetDeviceOutputData(this->outputCLData);
+        // output_tensors[numOutput - 1]->SetDeviceInputData(this->inputCLData);
+        // printf("-------------------------------------------------------------------\n");
+        // std::set<std::string> mBuildOptions;
+        // mBuildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
+        // cl_kernel imageToBufferKernel = mOpenCLRuntime->BuildKernel("buffer_to_image", "image_to_nhwc_buffer", mBuildOptions);
+        // float *outputData = mImageConvert->ConvertImageToNHWCBuffer(output_tensors[numOutput - 1], imageToBufferKernel, mOpenCLRuntime, false, false);
+        // int size = 160 * 160 * 96;
+        // FILE *pfile;
+        // pfile = fopen("/aidata/anders/data_collection/okay/WF/archives/test/test_data/optimization/optimized.binary", "wb");
+        // fwrite(outputData, 1, size * sizeof(float), pfile);
+        // fclose(pfile);
+        // for (int i = 0; i < 34; i++)
+        // {
+        //     std::cout << outputData[i] << std::endl;
+        // }
+        // free(outputData);
+        // exit(1);
+        bool status = true;
+        if (err != CL_SUCCESS)
+            return false;
+        return status;
+    }
 } // namespace SNN

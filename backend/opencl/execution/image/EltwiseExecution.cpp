@@ -1,5 +1,4 @@
 #include "EltwiseExecution.h"
-#include "backend/opencl/core/ImageBufferConverter.h"
 
 namespace SNN
 {
@@ -16,11 +15,6 @@ namespace SNN
             mBuildOptions.emplace("-DRELU6");
         else if (tensor->GetActType() == kActSigmoid)
             mBuildOptions.emplace("-DSIGMOID");
-        // for (auto &a : mBuildOptions)
-        // {
-        //     std::cout << a << std::endl;
-        // }
-        // exit(1);
         mKernel = mOpenCLRuntime->BuildKernel("binary", kernelName, mBuildOptions);
         mMaxWorkGroupSize = static_cast<size_t>(mOpenCLRuntime->getMaxWorkGroupSize(mKernel));
     }
@@ -63,22 +57,22 @@ namespace SNN
         uint32_t idx = 0;
         cl_int err = 0;
         int imageShape[2] = {UP_DIV(outputShape.at(3), 4) * outputShape.at(2), outputShape.at(0) * outputShape.at(1)};
-        cl_mem outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
-        cl_mem input0 = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
-        cl_mem input1 = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
-        tensor->SetDeviceOutputData(outputCLData);
-        this->outputCLData = tensor->GetDeviceOutputData();
-        this->inputCLData0 = &input0;
-        this->inputCLData1 = &input1;
+        this->outputCLData = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        this->inputCLData0 = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        this->inputCLData1 = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
+        tensor->SetDeviceOutputData(this->outputCLData);
+        // this->outputCLData = tensor->GetDeviceOutputData();
+        // this->inputCLData0 = &input0;
+        // this->inputCLData1 = &input1;
         if (inputShapes.size() == 2)
         {
             fullCount[0] = this->RealSize(inputShapes[0]) == 1 ? 0 : 1;
             fullCount[1] = this->RealSize(inputShapes[1]) == 1 ? 0 : 1;
             err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
             err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
-            err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData0);
-            err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->inputCLData1);
-            err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), this->outputCLData);
+            err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->inputCLData0);
+            err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->inputCLData1);
+            err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &this->outputCLData);
             err |= clSetKernelArg(mKernel, idx++, sizeof(shape), &shape);
             err |= clSetKernelArg(mKernel, idx++, sizeof(cl_mem), &fullCount);
             err |= clSetKernelArg(mKernel, idx++, sizeof(int), &activationType);
@@ -132,6 +126,7 @@ namespace SNN
         // cl_kernel imageToBufferKernel = mOpenCLRuntime->BuildKernel("buffer_to_image", "image_to_nhwc_buffer", buildOptions);
         // mImageConvert.ConvertImageToNHWCBuffer(tensor, imageToBufferKernel, mOpenCLRuntime, false, false);
         // exit(1);
+        return true;
     }
     bool EltwiseExecution::onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
     {
@@ -139,16 +134,14 @@ namespace SNN
         std::shared_ptr<Tensor> input_tensor0 = input_tensors[0];
         std::shared_ptr<Tensor> input_tensor1 = input_tensors[1];
         std::shared_ptr<Tensor> output_tensor = output_tensors[0];
-        // const std::vector<int> &input_tensor1_OutputShape = input_tensor1->OutputShape();
-        // const std::vector<int> &input_tensor2_OutputShape = input_tensor2->OutputShape();
-        this->inputCLData0 = input_tensor0->GetDeviceOutputData();
-        this->inputCLData1 = input_tensor1->GetDeviceOutputData();
+        this->inputCLData0 = *input_tensor0->GetDeviceOutputData();
+        this->inputCLData1 = *input_tensor1->GetDeviceOutputData();
         cl_int err = CL_SUCCESS;
-        err |= clSetKernelArg(mKernel, 2, sizeof(cl_mem), this->inputCLData0);
-        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), this->inputCLData1);
+        err |= clSetKernelArg(mKernel, 2, sizeof(cl_mem), &this->inputCLData0);
+        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), &this->inputCLData1);
         mOpenCLRuntime->RunKernel2D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
         oclCheckError(err, CL_SUCCESS);
-        output_tensor->SetDeviceOutputData(*this->outputCLData);
+        output_tensor->SetDeviceOutputData(this->outputCLData);
         // printf("-------------------------------------------------------------------\n");
         // std::set<std::string> buildOptions;
         // buildOptions.emplace("-DBUFFER_IMAGE_IO_TRANS");
@@ -159,5 +152,24 @@ namespace SNN
         if (err != CL_SUCCESS)
             return false;
         return true;
+    }
+    bool EltwiseExecution::onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors)
+    {
+        int numInput = input_tensors.size();
+        int numOutput = output_tensors.size();
+        SNN_ASSERT(input_tensors.size() == 2);
+        this->inputCLData0 = *(input_tensors[0]->GetDeviceOutputData());
+        this->inputCLData1 = *(input_tensors[1]->GetDeviceOutputData());
+        SNN_ASSERT(inputCLData0 != NULL);
+        SNN_ASSERT(inputCLData1 != NULL);
+        cl_int err = CL_SUCCESS;
+        err |= clSetKernelArg(mKernel, 2, sizeof(cl_mem), &this->inputCLData0);
+        err |= clSetKernelArg(mKernel, 3, sizeof(cl_mem), &this->inputCLData1);
+        mOpenCLRuntime->RunKernel2D(this->mKernel, mGWS, mLWS, mOpenCLRuntime);
+        output_tensors[numOutput - 1]->SetDeviceOutputData(this->outputCLData);
+        bool status = true;
+        if (err != CL_SUCCESS)
+            return false;
+        return status;
     }
 } // namespace SNN

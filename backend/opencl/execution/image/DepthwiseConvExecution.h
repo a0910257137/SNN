@@ -3,7 +3,6 @@
 #include <iostream>
 #include "ConvBaseExecution.h"
 #include "backend/opencl/core/OpenCLBackend.h"
-#include "backend/opencl/core/ImageBufferConverter.h"
 namespace SNN
 {
     class DepthwiseConvExecution : public ConvBaseExecution
@@ -15,12 +14,13 @@ namespace SNN
         DepthwiseConvExecution &operator=(const DepthwiseConvExecution &) = delete;
         virtual bool onResize(std::shared_ptr<Tensor> tensor);
         virtual bool onExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
+        virtual bool onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
 
     private:
         OpenCLBackend *mbackend;
 
     private:
-        cl_mem *inputCLData = nullptr, *outputCLData = nullptr;
+        cl_mem inputCLData = NULL, outputCLData = NULL;
 
     private:
         std::vector<int> mStrides{1, 1};
