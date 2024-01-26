@@ -136,14 +136,16 @@ namespace SNN
         optGraph.reserve(interpreter->numOperators);
         bool status;
         float *inputData = (float *)malloc(320 * 320 * 3 * sizeof(float));
-        // string filename = "/aidata/anders/data_collection/okay/demo_test/imgs/frame-000867.jpg";
-        // cv::Mat frame = cv::imread(filename);
-        // cv::resize(frame, frame, cv::Size(320, 320), 0.5, 0.5, cv::INTER_LINEAR);
-        // frame.convertTo(frame, CV_32F, 1.0 / 255.0, 0);
-        // cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+        string filename = "/aidata/anders/data_collection/okay/demo_test/imgs/frame-000867.jpg";
+        cv::Mat frame = cv::imread(filename);
+        demo_frame = frame;
+        cv::resize(frame, frame, cv::Size(320, 320), 0.5, 0.5, cv::INTER_AREA);
+        frame.convertTo(frame, CV_32F, 1.0 / 255.0, 0);
+        cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
         inputs.emplace_back(snnGraph[0]);
         outputs.emplace_back(snnGraph[0]);
-        status = netOpContainer[0]->onInputExecute(inputData, inputs, outputs);
+        // status = netOpContainer[0]->onInputExecute(inputData, inputs, outputs);
+        status = netOpContainer[0]->onInputExecute((float *)frame.datastart, inputs, outputs);
         inputs.clear();
         outputs.clear();
         for (i = 1; i < interpreter->numOperators; i++)
@@ -160,6 +162,12 @@ namespace SNN
             inputs.clear();
             outputs.clear();
         }
+        // float *outputData = op->onConvert(snnGraph[108]);
+        // int size = 20 * 20 * 8;
+        // FILE *pfile;
+        // pfile = fopen("/aidata/anders/data_collection/okay/WF/archives/test/test_data/optimization/original.binary", "wb");
+        // fwrite(outputData, 1, size * sizeof(float), pfile);
+        // fclose(pfile);
         int counts = 0;
         std::map<int, int> i2fused_op;
         std::vector<std::vector<int>> optimizedConnections;
@@ -385,6 +393,31 @@ namespace SNN
         //         }
         //     }
         // }
+        // std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> results;
+        // float *cls_x, *bbox_x, *param_x, *trans_x;
+        // tensor0 = optGraph.at(60)[0];
+        // bbox_x = op->onConvert(tensor0);
+        // tensor0 = optGraph.at(61)[0];
+        // cls_x = op->onConvert(tensor0);
+        // tensor0 = optGraph.at(64)[0];
+        // param_x = op->onConvert(tensor0);
+        // tensor0 = optGraph.at(67)[0];
+        // trans_x = op->onConvert(tensor0);
+        // mpostProcessor->MTFDBaseProcessor(results,
+        //                                   1,
+        //                                   resizedRatios,
+        //                                   cls_x,
+        //                                   bbox_x,
+        //                                   param_x,
+        //                                   trans_x);
+        // ShowBbox(demo_frame, results.first);
+        // ShowLandmarks(demo_frame, results.second);
+        // cv::imwrite("output.jpg", demo_frame);
+        // free(cls_x);
+        // free(bbox_x);
+        // free(param_x);
+        // free(trans_x);
+        // exit(1);
     }
     void *Model::InputPreprocess(void *args)
     {
@@ -407,7 +440,7 @@ namespace SNN
             }
             pthread_mutex_lock(&lock_show);
             demo_frame = frame;
-            status_show = true;
+            // status_show = true;
             pthread_cond_signal(&cond_show);
             pthread_mutex_unlock(&lock_show);
             cv::resize(frame, frame, cv::Size(320, 320), 0.5, 0.5, cv::INTER_LINEAR);
@@ -475,31 +508,40 @@ namespace SNN
 
             if (enableOptimization)
             {
-                
+
                 for (i = 1; i < nodeLength; i++)
                 {
+                    op = optMTFDOpContainer[i];
                     if (optMTFDGraphLinks[i].size() == 2)
                     {
                         numInput1 = optMTFDGraph[optMTFDGraphLinks[i][0]].size();
                         numInput2 = optMTFDGraph[optMTFDGraphLinks[i][1]].size();
                         inputs = {optMTFDGraph[optMTFDGraphLinks[i][0]][numInput1 - 1], optMTFDGraph[optMTFDGraphLinks[i][1]][numInput2 - 1]};
                         outputs = optMTFDGraph[i];
-                        status = optMTFDOpContainer[i]->onOptimizedExecute(inputs, outputs);
+                        status = op->onOptimizedExecute(inputs, outputs);
                     }
                     else
                     {
-                        status = optMTFDOpContainer[i]->onOptimizedExecute(optMTFDGraph[optMTFDGraphLinks[i][0]], optMTFDGraph[i]);
+                        status = op->onOptimizedExecute(optMTFDGraph[optMTFDGraphLinks[i][0]], optMTFDGraph[i]);
                     }
                 }
+                tensor = optMTFDGraph.at(60)[0];
+                bbox_x = op->onConvert(tensor);
+                tensor = optMTFDGraph.at(61)[0];
+                cls_x = op->onConvert(tensor);
+                tensor = optMTFDGraph.at(64)[0];
+                param_x = op->onConvert(tensor);
+                tensor = optMTFDGraph.at(67)[0];
+                trans_x = op->onConvert(tensor);
             }
             else
             {
                 for (i = 1; i < nodeLength - 1; i++)
                 {
                     tensor = MTFDGraph.at(i);
-                    name = tensor->GetOpName();
-                    std::cout << " ------------------------ Node op index: ------------------------  " << i << std::endl;
-                    std::cout << name << std::endl;
+                    // name = tensor->GetOpName();
+                    // std::cout << " ------------------------ Node op index: ------------------------  " << i << std::endl;
+                    // std::cout << name << std::endl;
                     const std::vector<int> &inputIndex = tensor->inputIndex;
                     op = MTFDOpContainer[i];
                     for (j = 0; j < inputIndex.size(); j++)
@@ -521,24 +563,47 @@ namespace SNN
                 tensor = MTFDGraph.at(outputIndex[3]);
                 trans_x = op->onConvert(tensor);
             }
+            postProcessor->MTFDBaseProcessor(results,
+                                             1,
+                                             resizedRatios,
+                                             cls_x,
+                                             bbox_x,
+                                             param_x,
+                                             trans_x);
+
             status_model = false;
+            ShowBbox(demo_frame, results.first);
+            ShowLandmarks(demo_frame, results.second);
+            cv::imshow("DEMO", demo_frame);
             pthread_mutex_unlock(&lock_model);
-            // postProcessor->MTFDBaseProcessor(results,
-            //                                  1,
-            //                                  resizedRatios,
-            //                                  cls_x,
-            //                                  bbox_x,
-            //                                  param_x,
-            //                                  trans_x);
-            // free(cls_x);
-            // free(bbox_x);
-            // free(param_x);
-            // free(trans_x);
-            if (exitSignal)
+            if (cv::waitKey(1) == 'q')
+            {
+                exitSignal = true;
                 break;
-            auto end = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - beg);
-            std::cout << "Elapsed Time: " << duration.count() * 1e-6 << std::endl;
+            }
+            free(cls_x);
+            free(bbox_x);
+            free(param_x);
+            free(trans_x);
+            results.first.clear();
+            results.second.clear();
+            // std::vector<std::vector<float>> n_bboxes = results.first;
+            // std::vector<std::vector<float>> n_landmarks = results.second[0];
+            // for (i = 0; i < 68; i++)
+            // {
+            //     std::cout << "(" << n_landmarks[i][0] << ", " << n_landmarks[i][1] << ")" << std::endl;
+            // }
+            // printf("%ld\n", n_landmarks.size());
+            // printf("%ld\n", n_bboxes.size());
+
+            // std::cout << "(" << n_bboxes[0][0] << ", " << n_bboxes[0][1] << ", " << n_bboxes[0][2] << ", " << n_bboxes[0][3]
+            //           << ")" << std::endl;
+            // exit(1);
+            // if (exitSignal)
+            //     break;
+            // auto end = std::chrono::high_resolution_clock::now();
+            // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - beg);
+            // std::cout << "Elapsed Time: " << duration.count() * 1e-6 << std::endl;
         }
         return nullptr;
     }

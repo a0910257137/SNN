@@ -174,7 +174,7 @@ void ShowLandmarks(cv::Mat &frame, std::vector<std::vector<std::vector<float>>> 
     {
         lnmks = nlnmks[i];
 
-        for (int j = 0; j < lnmks.size() - 1; j++)
+        for (int j = 0; j < 68; j++)
         {
             kp = cv::Point(lnmks[j][0], lnmks[j][1]);
             // std::cout << lnmks.size() << std::endl;

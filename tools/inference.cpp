@@ -40,7 +40,7 @@ int main(int argc, char **argv)
     //     fprintf(stderr, "pthread_create failed!\n");
     //     exit(1);
     // }
-    if (pthread_join(threads[0], nullptr) != 0 and pthread_join(threads[1], nullptr) != 0 and pthread_join(threads[2], nullptr) != 0)
+    if (pthread_join(threads[0], nullptr) != 0 and pthread_join(threads[1], nullptr) != 0)
     {
         fprintf(stderr, "pthread_join failed!\n");
         exit(1);
