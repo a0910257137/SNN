@@ -10,7 +10,6 @@ int main(int argc, char **argv)
     SNN::Pipeline pipeline(model_cfg, backend_cfg);
     float elapsed_time;
     pipeline.BuildSNNGraph(true);
-    // pipeline.GraphOptimization();
     string video_path = "/aidata/anders/landmarks/demo_video/2021_12_24/[drive]anders_2.MP4";
     cv::VideoCapture cap(video_path);
     if (!cap.isOpened())
@@ -35,11 +34,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "pthread_create failed!\n");
         exit(1);
     }
-    // if (pthread_create(&threads[2], NULL, pipeline.Display, &inputTab) != 0)
-    // {
-    //     fprintf(stderr, "pthread_create failed!\n");
-    //     exit(1);
-    // }
     if (pthread_join(threads[0], nullptr) != 0 and pthread_join(threads[1], nullptr) != 0)
     {
         fprintf(stderr, "pthread_join failed!\n");

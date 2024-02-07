@@ -13,7 +13,7 @@ namespace SNN
     class OpenCLBackend
     {
     public:
-        OpenCLBackend(bool permitFloat16);
+        OpenCLBackend(BackendConfig::Type type);
         ~OpenCLBackend();
         OpenCLBackend(const OpenCLBackend &) = delete;
         OpenCLBackend &operator=(const OpenCLBackend &) = delete;
@@ -28,7 +28,6 @@ namespace SNN
         void _AllocHostBuffer(int length) const;
         // cl_mem ConvertToDevice(const Tensor *srcTensor, DataFormat data_format, bool svmFlag);
         // cl_mem ConvertNHWCBufferToImage(const Tensor *tensor, bool needwait, bool svmFlag);
-
     protected:
         OpenCLRuntime *_mCLRuntime = nullptr;
 

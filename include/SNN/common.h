@@ -9,7 +9,8 @@ typedef struct BackendConfig
     enum Type
     {
         CPU = 0,
-        OpenCL,
+        OpenCLImage = 1,
+        OpenCLBuffer = 2,
     };
 
     enum PrecisionMode
@@ -18,7 +19,7 @@ typedef struct BackendConfig
         Precision_FP16,
         Precision_INT8,
     };
-    Type backendType = OpenCL;
+    Type backendType = OpenCLBuffer;
     PrecisionMode precisionType = Precision_FP32;
 } BackendConfig;
 
@@ -26,7 +27,6 @@ typedef struct ModelConfig
 {
     std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/whole/one_branch/tflite/mtfd_FP32.tflite";
     std::string weight_root = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights";
-    // std::string mtfd_path = "/aidata/anders/data_collection/okay/total/archives/whole/mobilenext_kps/tflite/mtfd_FP32.tflite";
     std::string bbox_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/bbox/binary";
     std::string params_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/kps/binary";
     std::string kps_path = "/aidata/anders/data_collection/okay/total/archives/whole/scale_down/weights/params/binary";

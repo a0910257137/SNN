@@ -1,8 +1,11 @@
 
 file(GLOB_RECURSE OpenCL_SRC 
+                ${CMAKE_CURRENT_LIST_DIR}/execution/buffer/*.cpp      
                 ${CMAKE_CURRENT_LIST_DIR}/execution/image/*.cpp                  
                 ${CMAKE_CURRENT_LIST_DIR}/core/OpenCL*.cpp
+                ${CMAKE_CURRENT_LIST_DIR}/core/BufferConvertor.cpp
                 ${CMAKE_CURRENT_LIST_DIR}/core/ImageBufferConverter.cpp
+                ${CMAKE_CURRENT_LIST_DIR}/core/ImagePostProcess.cpp
                 ${CMAKE_CURRENT_LIST_DIR}/core/runtime/OpenCL*.cpp
                 ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp)
 set(OPENCL_LIB_DIR "${CMAKE_SOURCE_DIR}/third_party/OpenCL")

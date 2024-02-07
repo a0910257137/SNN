@@ -3,10 +3,21 @@
 #include "include/SNN/SNNDefine.h"
 namespace SNN
 {
-    OpenCLBackend::OpenCLBackend(bool permitFloat16)
+    OpenCLBackend::OpenCLBackend(BackendConfig::Type type)
     {
         _mCLRuntime = new OpenCLRuntime();
-        this->OnSetCache();
+        if (type == BackendConfig::OpenCLImage)
+        {
+            printf("INFO: Enable OpenCL backend and image data type\n");
+            _mCLRuntime->memType = GpuMemObject::IMAGE;
+            this->OnSetCache();
+        }
+
+        else if (type == BackendConfig::OpenCLBuffer)
+        {
+            printf("INFO: Enable OpenCL backend and buffer data type\n");
+            _mCLRuntime->memType = GpuMemObject::BUFFER;
+        }
     }
     OpenCLBackend::~OpenCLBackend()
     {
@@ -14,7 +25,6 @@ namespace SNN
     }
     bool OpenCLBackend::OnSetCache()
     {
-
         std::set<std::string> buildOptions;
         if (_mCLRuntime->isSupportedFP16() == false)
         {
@@ -106,13 +116,8 @@ namespace SNN
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         SNN_ASSERT(inputShapes.size() == 1);
         const std::vector<int> &inputShape = inputShapes[0];
-        // const std::vector<int> &outputShape = tensor->OutputShape();
         int buffer_sizes = inputShape[0] * inputShape[1] * inputShape[2] * inputShape[3] * sizeof(float);
         this->_AllocHostBuffer(buffer_sizes);
-        // int elementSize = buffer_sizes / sizeof(float);
-        // float pseudoIputData[elementSize] = {};
-        // err |= clEnqueueWriteBuffer(commandQueue[0], mHostBuffer.second, CL_TRUE, 0, buffer_sizes, pseudoIputData, 0, NULL, NULL);
-        // oclCheckError(err, CL_SUCCESS);
         DataFormat data_format = tensor->data_format;
         cl_mem outputData = this->ConvertToDevice(inputShapes[0], data_format, false);
         err |= clFinish(commandQueue[0]);

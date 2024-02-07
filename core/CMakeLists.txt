@@ -13,7 +13,9 @@ add_library(CORE_LIBS SHARED
                 Pipeline.cpp
                 ConvolutionCommon.cpp
                 Model.cpp
-                PostProcessor.cpp)
+                PostProcessor.cpp
+                TensorUtils.cpp
+                )
 target_link_libraries(CORE_LIBS
       PRIVATE 
           tensorflow-lite

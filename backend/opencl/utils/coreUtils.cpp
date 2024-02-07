@@ -69,8 +69,12 @@ namespace SNN
     }
     std::vector<int> TensorShapeFormat(const std::vector<int> &shape, DataFormat data_format)
     {
-        int iN, iH, iW, iC;
         int dimensions = shape.size();
+        int iN = (0 != shape[0]) ? shape[0] : 1;
+        int iH = (0 != shape[1]) ? shape[1] : 1;
+        int iW = (0 != shape[2]) ? shape[2] : 1;
+        int iC = (0 != shape[3]) ? shape[3] : 1;
+
         if (data_format == DATA_FORMAT_NHWC)
         {
             iN = (0 < shape[0]) ? shape[0] : 1;

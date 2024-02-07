@@ -6,14 +6,11 @@ namespace SNN
     pthread_mutex_t Model::lock_video_in, Model::lock_model, Model::lock_show;
     pthread_cond_t Model::cond_video_in, Model::cond_model, Model::cond_show;
     bool Model::status_video = true, Model::status_model = false, Model::status_show = false, Model::exitSignal = false, Model::enableOptimization = false;
-
     std::vector<std::shared_ptr<Tensor>> Model::MTFDGraph;
     std::vector<std::shared_ptr<Execution>> Model::MTFDOpContainer;
-
     std::vector<std::shared_ptr<Execution>> Model::optMTFDOpContainer;
     std::vector<std::vector<std::shared_ptr<Tensor>>> Model::optMTFDGraph;
     std::map<int, std::vector<int>> Model::optMTFDGraphLinks;
-
     int Model::nodeLength, Model::bCounts;
     float *Model::batchBuffer, *Model::resizedRatios;
     std::vector<int> Model::outputIndex;
@@ -83,10 +80,10 @@ namespace SNN
         {
             printf("ERROR: Gernerated empty SNN graph by %s\n", inputModelFormat.c_str());
             SNN_CHECK_SUCCESS(snnGraph.size() != 0, true);
+            return false;
         }
-        else
-            printf("INFO: Finsh converting to SNN nodes ... \n");
         outputIndex = mModelMaps[modelName]["outputIndex"];
+        printf("================== INFO: Finsh converting to SNN nodes ... ==================\n");
         return true;
     }
     bool Model::BuildSNNGraph(bool is_optimization)
@@ -98,8 +95,6 @@ namespace SNN
         {
             tensor = snnGraph[i];
             name = tensor->GetOpName();
-            // std::cout << " ------------------------ Node op index: ------------------------  " << i << std::endl;
-            // std::cout << name << std::endl;
             tensor->SetMainMemory(mainMemory);
             this->backend->BuildOperation(tensor, netOpContainer);
         }
@@ -144,8 +139,9 @@ namespace SNN
         cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
         inputs.emplace_back(snnGraph[0]);
         outputs.emplace_back(snnGraph[0]);
-        // status = netOpContainer[0]->onInputExecute(inputData, inputs, outputs);
+        status = netOpContainer[0]->onInputExecute(inputData, inputs, outputs);
         status = netOpContainer[0]->onInputExecute((float *)frame.datastart, inputs, outputs);
+
         inputs.clear();
         outputs.clear();
         for (i = 1; i < interpreter->numOperators; i++)
@@ -367,38 +363,37 @@ namespace SNN
             }
             counts += 1;
         }
+        std::vector<std::shared_ptr<Tensor>> output_tensors{optGraph.at(61)[0], optGraph.at(60)[0], optGraph.at(64)[0], optGraph.at(67)[0]};
+        this->backend->PostOperators(output_tensors, optOpContainer);
+        optGraph.emplace_back(output_tensors);
         free(inputData);
         printf("INFO: ======================= Finish optimization =======================\n");
-        // int numInput1, numInput2;
-        // std::vector<std::shared_ptr<Tensor>> tensors;
-        // for (i = 0; i < counts; i++)
-        // {
-        //     op = optOpContainer[i];
-        //     if (i == 0)
-        //     {
-        //         status = op->onInputExecute((float *)frame.datastart, optGraph[connection_infos[i][0]], optGraph[i]);
-        //     }
-        //     else
-        //     {
-        //         if (connection_infos[i].size() == 2)
-        //         {
-        //             numInput1 = optGraph[connection_infos[i][0]].size();
-        //             numInput2 = optGraph[connection_infos[i][1]].size();
-        //             tensors = {optGraph[connection_infos[i][0]][numInput1 - 1], optGraph[connection_infos[i][1]][numInput2 - 1]};
-        //             status = op->onOptimizedExecute(tensors, optGraph[i]);
-        //         }
-        //         else
-        //         {
-        //             status = op->onOptimizedExecute(optGraph[connection_infos[i][0]], optGraph[i]);
-        //         }
-        //     }
-        // }
+        int numInput1, numInput2;
+        std::vector<std::shared_ptr<Tensor>> tensors;
+        for (i = 0; i < counts; i++)
+        {
+            op = optOpContainer[i];
+            if (i == 0)
+            {
+                status = op->onInputExecute((float *)frame.datastart, optGraph[connection_infos[i][0]], optGraph[i]);
+            }
+            else
+            {
+                if (connection_infos[i].size() == 2)
+                {
+                    numInput1 = optGraph[connection_infos[i][0]].size();
+                    numInput2 = optGraph[connection_infos[i][1]].size();
+                    tensors = {optGraph[connection_infos[i][0]][numInput1 - 1], optGraph[connection_infos[i][1]][numInput2 - 1]};
+                    status = op->onOptimizedExecute(tensors, optGraph[i]);
+                }
+                else
+                {
+                    status = op->onOptimizedExecute(optGraph[connection_infos[i][0]], optGraph[i]);
+                }
+            }
+        }
         // std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> results;
-        // float *cls_x, *bbox_x, *param_x, *trans_x;
-        // tensor0 = optGraph.at(60)[0];
-        // bbox_x = op->onConvert(tensor0);
-        // tensor0 = optGraph.at(61)[0];
-        // cls_x = op->onConvert(tensor0);
+        // exit(1);
         // tensor0 = optGraph.at(64)[0];
         // param_x = op->onConvert(tensor0);
         // tensor0 = optGraph.at(67)[0];
@@ -417,7 +412,6 @@ namespace SNN
         // free(bbox_x);
         // free(param_x);
         // free(trans_x);
-        // exit(1);
     }
     void *Model::InputPreprocess(void *args)
     {
@@ -501,7 +495,7 @@ namespace SNN
         std::pair<std::vector<std::vector<float>>, std::vector<std::vector<std::vector<float>>>> results;
         while (1)
         {
-            auto beg = std::chrono::high_resolution_clock::now();
+            // auto beg = std::chrono::high_resolution_clock::now();
             pthread_mutex_lock(&lock_model);
             while (!status_model)
                 pthread_cond_wait(&cond_model, &lock_model);
@@ -563,30 +557,29 @@ namespace SNN
                 tensor = MTFDGraph.at(outputIndex[3]);
                 trans_x = op->onConvert(tensor);
             }
-            postProcessor->MTFDBaseProcessor(results,
-                                             1,
-                                             resizedRatios,
-                                             cls_x,
-                                             bbox_x,
-                                             param_x,
-                                             trans_x);
-
+            // postProcessor->MTFDBaseProcessor(results,
+            //                                  1,
+            //                                  resizedRatios,
+            //                                  cls_x,
+            //                                  bbox_x,
+            //                                  param_x,
+            //                                  trans_x);
             status_model = false;
-            ShowBbox(demo_frame, results.first);
-            ShowLandmarks(demo_frame, results.second);
-            cv::imshow("DEMO", demo_frame);
+            // ShowBbox(demo_frame, results.first);
+            // ShowLandmarks(demo_frame, results.second);
+            // cv::imshow("DEMO", demo_frame);
             pthread_mutex_unlock(&lock_model);
-            if (cv::waitKey(1) == 'q')
-            {
-                exitSignal = true;
-                break;
-            }
+            // if (cv::waitKey(1) == 'q')
+            // {
+            //     exitSignal = true;
+            //     break;
+            // }
             free(cls_x);
             free(bbox_x);
             free(param_x);
             free(trans_x);
-            results.first.clear();
-            results.second.clear();
+            // results.first.clear();
+            // results.second.clear();
             // std::vector<std::vector<float>> n_bboxes = results.first;
             // std::vector<std::vector<float>> n_landmarks = results.second[0];
             // for (i = 0; i < 68; i++)
@@ -657,7 +650,7 @@ namespace SNN
             {
                 // std::cout << " ------------------------ Node op index: ------------------------  " << i << std::endl;
                 tensor = snnGraph.at(i);
-                name = tensor->GetOpName();
+                // name = tensor->GetOpName();
                 // std::cout << name << std::endl;
                 const std::vector<int> &inputIndex = tensor->inputIndex;
                 op = netOpContainer[i];

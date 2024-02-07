@@ -11,7 +11,6 @@
 #include "PostProcessor.h"
 namespace SNN
 {
-
     class Model : public NonCopyable
     {
         static cv::Mat frame, demo_frame;
@@ -49,6 +48,7 @@ namespace SNN
 
     protected:
         std::shared_ptr<Backend> backend;
+        
 
     public:
         std::vector<std::shared_ptr<Execution>> netOpContainer;
@@ -62,7 +62,6 @@ namespace SNN
         std::string inputModelFormat;
         std::unique_ptr<PostProcessor> mpostProcessor;
         std::unique_ptr<Interpreter> interpreter;
-
         std::shared_ptr<std::vector<std::pair<float *, float *>>> mainMemory;
         std::map<std::string, std::map<std::string, std::vector<int>>> mModelMaps;
         std::string modelName;

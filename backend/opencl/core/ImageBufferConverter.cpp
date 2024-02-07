@@ -159,11 +159,9 @@ namespace SNN
         oclCheckError(err, CL_SUCCESS);
         cl_mem mFilter = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, imageShape[0], imageShape[1], 0, NULL, &err);
         err |= clSetKernelArg(mBufferToImageKernel, idx++, sizeof(cl_mem), &mFilter);
-        oclCheckError(err, CL_SUCCESS);
         const size_t lws[2] = {16, MAX((unsigned int)1, maxWorkGroupSize / 16)};
         size_t roundUpGroupWorkSize[2] = {ROUND_UP(gws[0], lws[0]), ROUND_UP(gws[1], lws[1])};
         err |= clEnqueueNDRangeKernel(commandQueue[0], mBufferToImageKernel, 2, NULL, roundUpGroupWorkSize, lws, 0, NULL, NULL);
-        oclCheckError(err, CL_SUCCESS);
         err |= clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
         tensor->SetDeviceFilter(mFilter);
@@ -193,7 +191,6 @@ namespace SNN
         cl_command_queue *commandQueue = runtime->GetCommandQue();
         const cl_mem *mDeviceImage = tensor->GetDeviceOutputData();
         float *h_data = (float *)malloc(buffer_sizes);
-
         cl_mem mhostBuffer = clCreateBuffer(*GPUcontext, CL_MEM_READ_WRITE, buffer_sizes, NULL, &err);
         oclCheckError(err, CL_SUCCESS);
         err |= clSetKernelArg(imageToBufferKernel, idx++, sizeof(int), &in_gws[0]);
@@ -211,15 +208,6 @@ namespace SNN
         err |= clEnqueueNDRangeKernel(commandQueue[0], imageToBufferKernel, 2, NULL, roundUpGroupWorkSize, lws, 0, NULL, &event);
         oclCheckError(err, CL_SUCCESS);
         err |= clEnqueueReadBuffer(commandQueue[0], mhostBuffer, CL_TRUE, 0, buffer_sizes, h_data, 0, NULL, NULL);
-        // clRetainMemObject(*mDeviceImage);
-        // for (int i = 0; i < 30; i++)
-        // {
-        //     printf("%5f\n", h_data[i]);
-        // }
-        // free(h_data);
-        // std::ofstream wf("/home2/anders/proj_c/SNN/test/stem.bin", std::ios::out | std::ios::binary);
-        // wf.write((char *)h_data, buffer_sizes);
-        // exit(1);
         if (needWait == true)
         {
             clWaitForEvents(1, &event);

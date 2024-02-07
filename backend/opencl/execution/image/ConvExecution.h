@@ -1,5 +1,5 @@
 #ifndef CONVEXECUTION_H
-#define COVEXECUTION_H
+#define CONVEXECUTION_H
 #include "ConvBaseExecution.h"
 #include "Execution.h"
 #include "backend/opencl/core/OpenCLBackend.h"

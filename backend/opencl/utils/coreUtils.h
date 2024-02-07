@@ -5,7 +5,6 @@
 #include "include/SNN/macro.h"
 #include "backend/opencl/core/OpenCLSetting.h"
 #include "backend/opencl/core/runtime/OpenCLRuntime.h"
-#include <iostream>
 namespace SNN
 {
     void getImageShape(const std::vector<int> &shape, const OpenCLBufferFormat type, size_t *imageShape);

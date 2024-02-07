@@ -17,6 +17,7 @@ namespace SNN
         std::iota(std::begin(meshY20), std::end(meshY20), 0); // 0 is the starting number
         std::iota(std::begin(meshX10), std::end(meshX10), 0); // 0 is the starting number
         std::iota(std::begin(meshY10), std::end(meshY10), 0); // 0 is the starting number
+
         GetWeights(model_cfg.bbox_path, headWeights);
         GetWeights(model_cfg.params_path, headWeights);
         GetWeights(model_cfg.kps_path, headWeights);
@@ -88,7 +89,6 @@ namespace SNN
         std::vector<std::vector<float>> outputCoords = FindCoord(cls_x, cls_xShape);
         if (outputCoords.size() == 0)
             return;
-
         // x1, y1, x2, y2, score, c
         std::vector<std::vector<float>> bboxes = GetBboxWithConv(i, bbox_x, outputCoords, bbox_xShape);
         // // select index, selected bbox
@@ -128,7 +128,6 @@ namespace SNN
         {
             for (i = 0; i < width; i++)
             {
-
                 o_pos = j * (width * channel) + i * channel;
                 val0 = *(cls_x + o_pos);
                 if (needSigmoid)
@@ -138,7 +137,6 @@ namespace SNN
                     std::vector<float> coord{j, i, 0, val0};
                     outputCoords.emplace_back(coord);
                 }
-
                 o_pos++;
                 val1 = *(cls_x + o_pos);
                 if (needSigmoid)
@@ -660,7 +658,6 @@ namespace SNN
         }
         for (i = 0; k_out < end; k_out++, i++)
         {
-
             // printf("--------------\n");
             feat_pos = loc_y * param_map_width + loc_x * output_param_pred_channels + k_out;
             params[i] = *(param_x + feat_pos);
@@ -683,8 +680,6 @@ namespace SNN
         {
             feat_pos = loc_y * kp_map_width + loc_x * output_kp_pred_channels + k_out;
             kps[i] = *(trans_x + feat_pos) * stride;
-
-            // std::cout << kps[i] << std::endl;
         }
         kps[0] = MIN(MAX(0, meshx + kps[0]), stride_width * stride);
         kps[1] = MIN(MAX(0, meshy + kps[1]), stride_width * stride);

@@ -13,7 +13,6 @@ namespace SNN
         mDilations = {tensor->dilation(0), tensor->dilation(1)};
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         const std::vector<int> &inputShape = inputShapes[0];
-
         const std::vector<int> &outputShape = tensor->OutputShape();
         auto padding = mConvCommon->GetPadding(tensor);
         mPaddings[0] = padding.first;
@@ -49,7 +48,6 @@ namespace SNN
             buildOption = "-DBUFFER_INP_FP32";
         }
         bool status = this->mImageConvert->ConvertBufferToImage(tensor, CONV2D_FILTER, false, buildOption);
-
         // create kernel
         if (mStrides[0] == 1 && mStrides[1] && mDilations[0] && mDilations[1])
         {
@@ -69,7 +67,6 @@ namespace SNN
     }
     bool ConvExecution::onResize(std::shared_ptr<Tensor> tensor)
     {
-
         const std::vector<std::vector<int>> &inputShapes = tensor->InputShape();
         SNN_ASSERT(inputShapes.size() == 1);
         const std::vector<int> &inputShape = inputShapes[0];
@@ -130,7 +127,6 @@ namespace SNN
                 {
                     mGWS = {static_cast<size_t>(UP_DIV(outputShape.at(3), 4) * UP_DIV(outputShape.at(2), 4)),
                             static_cast<size_t>(outputShape.at(0) * outputShape.at(1))};
-
                     err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[0]);
                     err |= clSetKernelArg(mKernel, idx++, sizeof(int), &mGWS[1]);
                     size_t width4 = UP_DIV(outputShape[2], 4);

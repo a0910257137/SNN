@@ -9,7 +9,7 @@ namespace SNN
         this->err = oclGetPlatformID(&(this->platform));
         oclCheckError((this->err), CL_SUCCESS);
         this->err = clGetDeviceIDs(this->platform, CL_DEVICE_TYPE_GPU, 0, NULL, &(this->_num_devices));
-        this->_num_devices -= 1;
+        // this->_num_devices -= 1;
         printf("INFO: Fetch the # of %d device\n", this->_num_devices);
         this->_device = (cl_device_id *)malloc(this->_num_devices * sizeof(cl_device_id));
         oclCheckError(err, CL_SUCCESS);
@@ -50,11 +50,6 @@ namespace SNN
         // bool status = BuildBinaryProgramMaps(pathDir);
         oclCheckError(status, true);
         cl_device_fp_config fp_config;
-        // clGetDeviceInfo(this->_device[0], CL_DEVICE_SINGLE_FP_CONFIG, sizeof(cl_device_fp_config), &fp_config, 0);
-        // if (fp_config > 0)
-        //     printf("INFO: Device is supported single-precision\n");
-        // fp_config = -1;
-        // clGetDeviceInfo(this->_device[0], CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF, sizeof(cl_device_fp_config), &fp_config, 0);
         clGetDeviceInfo(this->_device[0], CL_DEVICE_HALF_FP_CONFIG, sizeof(cl_device_fp_config), &fp_config, 0);
         mIsDeviceSupportedFP16 = fp_config > 0;
         if (mIsDeviceSupportedFP16)
@@ -539,6 +534,10 @@ namespace SNN
     bool OpenCLRuntime::isSupportedFP16() const
     {
         return mIsSupportedFP16;
+    }
+    bool OpenCLRuntime::isSupportedIntelSubgroup() const
+    {
+        return mSupportedIntelSubgroup;
     }
     bool OpenCLRuntime::isWeightCpuTransHalf() const
     {

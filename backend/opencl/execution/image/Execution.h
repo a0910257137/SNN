@@ -6,6 +6,7 @@
 #include "core/ConvolutionCommon.h"
 #include "backend/opencl/core/OpenCLBackend.h"
 #include "backend/opencl/core/ImageBufferConverter.h"
+#include "backend/opencl/core/BufferConvertor.h"
 namespace SNN
 {
 
@@ -30,6 +31,7 @@ namespace SNN
         cl_command_queue *commandQueue;
         cl_image_format clImageFormat;
         ImageBufferConverter *mImageConvert;
+        BufferConvertor *mBufferConvertor;
 
     protected:
         OpenCLRuntime *mOpenCLRuntime;

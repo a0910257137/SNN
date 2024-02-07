@@ -28,8 +28,9 @@ namespace SNN
     enum GpuMemObject
     {
         AUTO = 0,
-        BUFFER = 1,
-        IMAGE = 2
+        IMAGE = 1,
+        BUFFER = 2,
+
     };
     enum CLTuneLevel
     {
@@ -66,6 +67,7 @@ namespace SNN
 
     public:
         size_t *getMaxWorkItemSizes();
+        bool isSupportedIntelSubgroup() const;
         bool isSupportedFP16() const;
         bool isWeightCpuTransHalf() const;
         bool isDeviceSupportedFP16() const;
@@ -94,6 +96,7 @@ namespace SNN
 
     public:
         unsigned int mQueueCount = 0;
+        GpuMemObject memType;
 
     protected:
         cl_device_id *_device;
@@ -114,6 +117,7 @@ namespace SNN
         cl_platform_id platform;
         cl_event event = NULL;
         uint32_t mMaxMemAllocSize;
+        bool mSupportedIntelSubgroup = false;
         bool mIsSupportedFP16 = false;
         bool mIsDeviceSupportedFP16 = false;
         GpuType mGpuType;

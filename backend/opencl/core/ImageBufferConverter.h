@@ -16,9 +16,9 @@ namespace SNN
         ImageBufferConverter(const ImageBufferConverter &) = delete;
         ImageBufferConverter &operator=(const ImageBufferConverter &) = delete;
         bool ConvertBufferToImage(std::shared_ptr<Tensor> tensor, const OpenCLBufferFormat type, bool needwait = false, const std::string &buildOption = "");
-
         float *ConvertImageToNHWCBuffer(std::shared_ptr<Tensor> tensor, cl_kernel &imageToBufferKernel,
                                         OpenCLRuntime *runtime, bool needWait = false, bool svmFlag = false);
+                                        
 
     private:
         OpenCLRuntime *mOpenCLRuntime = nullptr;

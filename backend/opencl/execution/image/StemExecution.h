@@ -12,7 +12,6 @@ namespace SNN
         StemExecution(const StemExecution &) = delete;
         StemExecution &operator=(const StemExecution &) = delete;
         virtual bool onOptimizedResize(std::vector<std::shared_ptr<Tensor>> &tensors) override;
-        // virtual bool onOptimizedExecute(std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors);
         virtual bool onInputExecute(float *input_data, std::vector<std::shared_ptr<Tensor>> &input_tensors, std::vector<std::shared_ptr<Tensor>> &output_tensors) override;
 
     private:

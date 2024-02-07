@@ -46,8 +46,6 @@ namespace SNN
         oclCheckError(err, CL_SUCCESS);
         int w[1] = {UP_DIV(biasSize, 4)}, h[1] = {1};
         cl_mem mBias = clCreateImage2D(*GPUcontext, CL_MEM_READ_WRITE, &clImageFormat, w[0], h[0], 0, NULL, &err);
-        // oclCheckError(err, CL_SUCCESS);
-        // err = clFinish(commandQueue[0]);
         oclCheckError(err, CL_SUCCESS);
         CopyBufferToImage(this->mOpenCLRuntime, biasBuffer, mBias, w, h, err);
         oclCheckError(err, CL_SUCCESS);
